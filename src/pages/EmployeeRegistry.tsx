@@ -293,7 +293,7 @@ export default function EmployeeRegistry() {
           .upload(cloudPath, file, { upsert: true });
 
         if (storageErr) {
-          addLog('error', `Erro Cloud: ${storageErr.message} (${cleanFileName})`);
+          addLog('error', `Erro Cloud: ${storageErr.message} (${normalizedFileName})`);
           continue;
         }
 
@@ -303,7 +303,7 @@ export default function EmployeeRegistry() {
             owner_cpf: employee.cpf,
             year: item.year,
             month: item.month,
-            filename: cleanFileName,
+            filename: normalizedFileName,
             file_path: cloudPath
           });
 
