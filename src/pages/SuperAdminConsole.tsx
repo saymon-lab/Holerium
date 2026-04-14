@@ -318,24 +318,36 @@ export default function SuperAdminConsole() {
         const file = await item.handle.getFile();
         const fileName = item.handle.name;
         
+        const simplify = (text: string) => 
+          text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase()
+          .replace(/(.)\1+/g, "$1") // Remove letras duplicadas
+          .trim();
+
         const currentFileName = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+        const simplifiedFileName = simplify(fileName);
         const baseFileName = currentFileName.replace(/\.PDF$/, '').replace(/^[0-9.]+\s*/, '').trim();
+        const simplifiedBase = simplify(baseFileName);
         const cleanCpfFromFileName = fileName.replace(/\D/g, '');
         
         const employee = employees.find(emp => {
+          const empNamePre = (emp.name || '');
           const empCleanCpf = (emp.cpf || '').replace(/\D/g, '');
-          const empCleanName = (emp.name || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+          const empCleanName = empNamePre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+          const empSimplified = simplify(empNamePre);
           
           if (!empCleanName || !empCleanCpf) return false;
 
           // 1. Tenta casar por CPF exato
           if (cleanCpfFromFileName.includes(empCleanCpf) && empCleanCpf.length >= 11) return true;
 
-          // 2. Tenta casar se TODAS as palavras do arquivo (com 3+ letras) estão no nome do funcionário
+          // 2. Tenta casar se TODAS as palavras do arquivo estão no nome (Fuzzy)
           const fileWords = baseFileName.split(/[\s._-]+/).filter(w => w.length > 2);
           if (fileWords.length > 0 && fileWords.every(word => empCleanName.includes(word))) return true;
 
-          // 3. Tenta casar se o nome do funcionário (resumido) está no arquivo
+          // 3. Tenta casar pela versão SIMPLIFICADA (Fellipe -> Felipe)
+          if (empSimplified.includes(simplifiedBase) || simplifiedBase.includes(empSimplified)) return true;
+
+          // 4. Fallback: Nome contido ou arquivo contido
           return currentFileName.includes(empCleanName) || empCleanName.includes(baseFileName);
         });
 
