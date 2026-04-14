@@ -118,14 +118,14 @@ export default function SuperAdminConsole() {
     if (isSyncing) return;
     
     try {
+      // Chamamos o authenticate IMEDIATAMENTE para não perder o gesto do usuário
+      const token = await authenticate();
+      
       setIsSyncing(true);
       setSyncLogs([]);
-      addLog('info', 'Iniciando autenticação com Google...');
-      
-      const token = await authenticate();
       addLog('success', 'Google: Autenticado com sucesso!');
       
-      addLog('info', 'Por favor, selecione a pasta raiz dos recibos no Google Drive...');
+      addLog('info', 'Selecionando pasta no Google Drive...');
       const pickedDocs = await showPicker(token);
       
       if (!pickedDocs || pickedDocs.length === 0) {

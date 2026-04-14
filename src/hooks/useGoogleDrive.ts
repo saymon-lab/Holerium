@@ -69,7 +69,9 @@ export function useGoogleDrive() {
         tokenClient.requestAccessToken({ prompt: 'consent' });
       } catch (err: any) {
         console.error("Erro ao iniciar Token Client:", err);
-        reject(`Falha interna ao abrir login: ${err.message || err}`);
+        const errorMsg = `Falha interna ao abrir login: ${err.message || err}`;
+        alert(errorMsg);
+        reject(errorMsg);
       }
     });
   };
