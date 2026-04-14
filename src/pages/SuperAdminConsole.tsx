@@ -32,6 +32,8 @@ import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
+import { useGoogleDrive } from '@/src/hooks/useGoogleDrive';
+import { Chrome } from 'lucide-react'; // Usaremos Chrome como ícone temporário para o Google
 
 interface Employee {
   id: string;
@@ -96,9 +98,145 @@ export default function SuperAdminConsole() {
   };
 
 
+  const { initScripts, authenticate, showPicker, listFiles, downloadFile, isReady } = useGoogleDrive();
+
   useEffect(() => {
     fetchData();
+    initScripts(); // Inicializa os scripts do Google no carregamento
   }, []);
+
+  const handleGoogleDriveSync = async () => {
+    if (isSyncing) return;
+    
+    try {
+      setIsSyncing(true);
+      setSyncLogs([]);
+      addLog('info', 'Iniciando autenticação com Google...');
+      
+      const token = await authenticate();
+      addLog('success', 'Autenticado com sucesso!');
+      
+      addLog('info', 'Por favor, selecione a pasta raiz dos recibos no Google Drive...');
+      const pickedDocs = await showPicker(token);
+      
+      if (!pickedDocs || pickedDocs.length === 0) {
+        addLog('error', 'Nenhuma pasta selecionada.');
+        setIsSyncing(false);
+        return;
+      }
+
+      const folderId = pickedDocs[0].id;
+      const folderName = pickedDocs[0].name;
+      addLog('info', `Pasta selecionada: ${folderName}. Escaneando PDFs...`);
+
+      const driveFiles = await listFiles(folderId, token);
+      if (!driveFiles || driveFiles.length === 0) {
+        addLog('error', 'Nenhum arquivo PDF encontrado na pasta selecionada.');
+        setIsSyncing(false);
+        return;
+      }
+
+      setSyncProgress({ current: 0, total: driveFiles.length, status: 'Processando arquivos do Drive...' });
+
+      let count = 0;
+      for (const driveFile of driveFiles) {
+        count++;
+        const fileName = driveFile.name;
+        
+        // Determinar Ano/Mês a partir do nome da pasta selecionada (ex: "01-2026")
+        const folderMatch = folderName.match(/(\d{2})[-/](\d{4})/);
+        let month = (new Date().getMonth() + 1).toString().padStart(2, '0');
+        let year = new Date().getFullYear().toString();
+        
+        if (folderMatch) {
+          month = folderMatch[1];
+          year = folderMatch[2];
+        }
+
+        const simplify = (text: string) => 
+          text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase()
+          .replace(/(.)\1+/g, "$1")
+          .trim();
+
+        const currentFileName = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+        const simplifiedBase = simplify(currentFileName.replace(/\.PDF$/, '').replace(/^[0-9.]+\s*/, ''));
+        const cleanCpfFromFileName = fileName.replace(/\D/g, '');
+
+        const employee = employees.find(emp => {
+          const empNamePre = (emp.name || '');
+          const empCleanCpf = (emp.cpf || '').replace(/\D/g, '');
+          const empCleanName = empNamePre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+          const empSimplified = simplify(empNamePre);
+          
+          if (cleanCpfFromFileName.includes(empCleanCpf) && empCleanCpf.length >= 11) return true;
+          const fileWords = currentFileName.replace(/\.PDF$/, '').split(/[\s._-]+/).filter(w => w.length > 2);
+          if (fileWords.length > 0 && fileWords.every(word => empCleanName.includes(word))) return true;
+          if (empSimplified.includes(simplifiedBase) || simplifiedBase.includes(empSimplified)) return true;
+          return currentFileName.includes(empCleanName) || empCleanName.includes(simplifiedBase);
+        });
+
+        if (!employee) {
+          addLog('error', `Não identificado: ${fileName}`);
+          continue;
+        }
+
+        addLog('info', `Baixando do Drive: ${fileName}...`);
+        const fileBlob = await downloadFile(driveFile.id, token);
+        const fileContent = new File([fileBlob], fileName, { type: 'application/pdf' });
+
+        const normalizedFileName = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cloudPath = `${employee.cpf}/${year}/${month}/${normalizedFileName}`;
+
+        const { error: storageErr } = await supabase.storage
+          .from('receipts')
+          .upload(cloudPath, fileContent, { upsert: true });
+
+        if (storageErr) {
+          addLog('error', `Erro Cloud: ${storageErr.message} (${fileName})`);
+          continue;
+        }
+
+        // Verifica se já existe para decidir o log
+        const { data: existingDoc } = await supabase
+          .from('documents')
+          .select('id')
+          .eq('owner_cpf', employee.cpf)
+          .eq('year', year)
+          .eq('month', month)
+          .maybeSingle();
+
+        const { error: dbErr } = await supabase
+          .from('documents')
+          .upsert({
+            owner_cpf: employee.cpf,
+            year: year,
+            month: month,
+            filename: normalizedFileName,
+            file_path: cloudPath
+          });
+
+        if (dbErr) {
+          addLog('error', `Erro Banco: ${dbErr.message}`);
+        } else {
+          if (existingDoc) {
+            addLog('update', `Atualizado: ${employee.name} (${month}/${year})`);
+          } else {
+            addLog('success', `Sucesso: ${employee.name} (${month}/${year})`);
+          }
+        }
+
+        setSyncProgress(prev => ({ ...prev, current: count }));
+      }
+
+      alert('Sincronização via Google Drive concluída!');
+      calculateStorageUsage();
+    } catch (err: any) {
+      console.error('Erro na sincronização Google Drive:', err);
+      addLog('error', `Erro Crítico: ${err.message || err}`);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const fetchData = async () => {
     setLoading(true);
@@ -701,6 +839,15 @@ export default function SuperAdminConsole() {
                         O sistema busca pastas no formato "MM-AAAA" e arquivos que contenham o nome ou CPF do funcionário.
                     </p>
                 </div>
+                <button
+                    disabled={isSyncing}
+                    onClick={handleGoogleDriveSync}
+                    className="w-full py-4 bg-white text-secondary border-2 border-surface-container-high rounded-2xl font-bold hover:bg-surface-container-low transition-all flex items-center justify-center gap-3 disabled:opacity-50 mb-3"
+                >
+                    <Chrome className="w-5 h-5 text-primary" />
+                    Sincronizar via Google Drive
+                </button>
+
                 <button
                     disabled={isSyncing}
                     onClick={startBatchSync}
