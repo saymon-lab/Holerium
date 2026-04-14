@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 const CLIENT_ID = "166814312947-qb8qvpovsjfe9aej3acu5qpcgvk1gfbf.apps.googleusercontent.com";
 const API_KEY = "AIzaSyA938HDdzLkTJKJSULkIb3Z1fcgYz_EcYM"; 
 const SCOPES = "https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.metadata.readonly";
+const ROOT_FOLDER_ID = "1_6thKMpLPSG_3ZPKF0640HDJeFxGyLjr";
 
 export function useGoogleDrive() {
   const [accessToken, setAccessToken] = useState<string | null>(null);
@@ -87,7 +88,8 @@ export function useGoogleDrive() {
       try {
         const view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
           .setSelectFolderEnabled(true)
-          .setIncludeFolders(true);
+          .setIncludeFolders(true)
+          .setParent(ROOT_FOLDER_ID); // <--- A trava da pasta está aqui!
 
         const picker = new google.picker.PickerBuilder()
           .enableFeature(google.picker.Feature.NAV_HIDDEN)
