@@ -45,10 +45,10 @@ export default function Login() {
   const recordLog = async (user: string, role: string, status: 'sucesso' | 'erro', detail: string = '') => {
     try {
       await supabase.from('access_logs').insert([{
-        user,
-        role,
-        status,
-        detail
+        Usuário: user,
+        Função: role,
+        Status: status,
+        Detalhe: detail
       }]);
     } catch (err) {
       console.error('Falha ao registrar log no Supabase:', err);
@@ -87,15 +87,25 @@ export default function Login() {
     const cleanInput = cpf.replace(/\D/g, '').trim(); 
 
     try {
-      const { data: found, error: dbError } = await supabase
-        .from('employees')
+      const { data: foundRaw, error: dbError } = await supabase
+        .from('Funcionários')
         .select('*')
-        .eq('cpf', cpf)
+        .eq('CPF', cpf)
         .maybeSingle();
 
       if (dbError) throw dbError;
 
-      if (found) {
+      if (foundRaw) {
+        // Mapeia de volta para o formato esperado pelo resto do app
+        const found = {
+          id: foundRaw.id,
+          name: foundRaw.Nome,
+          role: foundRaw.Função,
+          cpf: foundRaw.CPF,
+          status: foundRaw.Status,
+          avatar: foundRaw.Avatar
+        };
+
         if (loginTab === 'admin' && !['admin', 'superadmin', 'Administrador do Sistema'].includes(found.role)) {
           setError('Este usuário não possui privilégios administrativos.');
           await recordLog(found.name, 'Gestão', 'erro', 'Tentativa de acesso admin sem privilégio');

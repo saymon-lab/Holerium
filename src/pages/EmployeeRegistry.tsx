@@ -74,12 +74,22 @@ export default function EmployeeRegistry() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('employees')
+        .from('Funcionários')
         .select('*')
-        .order('name');
+        .order('Nome');
       
       if (error) throw error;
-      setEmployeesList(data || []);
+      
+      // Mapeia para o formato interno do app
+      const mappedData = (data || []).map(emp => ({
+        id: emp.id,
+        name: emp.Nome,
+        role: emp.Função,
+        cpf: emp.CPF,
+        status: emp.Status,
+        avatar: emp.Avatar
+      }));
+      setEmployeesList(mappedData);
     } catch (err) {
       console.error('Erro ao buscar funcionários:', err);
     } finally {
@@ -101,7 +111,7 @@ export default function EmployeeRegistry() {
     } else if (currentStep === 2) {
       try {
         const { error } = await supabase
-          .from('employees')
+          .from('Funcionários')
           .delete()
           .eq('id', empId);
         
@@ -132,8 +142,8 @@ export default function EmployeeRegistry() {
     const newStatus = currentStatus === 'Ativo' ? 'Inativo' : 'Ativo';
     try {
       const { error } = await supabase
-        .from('employees')
-        .update({ status: newStatus })
+        .from('Funcionários')
+        .update({ Status: newStatus })
         .eq('id', empId);
       
       if (error) throw error;
@@ -179,18 +189,18 @@ export default function EmployeeRegistry() {
 
         if (name && cpf && !existsLocally) {
           employeesToInsert.push({
-            name,
-            cpf,
-            role: 'Colaborador',
-            status: 'Ativo',
-            avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+            Nome: name,
+            CPF: cpf,
+            Função: 'Colaborador',
+            Status: 'Ativo',
+            Avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
           });
           addedCount++;
         }
       }
 
       if (employeesToInsert.length > 0) {
-        const { error } = await supabase.from('employees').insert(employeesToInsert);
+        const { error } = await supabase.from('Funcionários').insert(employeesToInsert);
         if (error) {
           console.error('Erro ao importar CSV para o servidor:', error);
           alert('Erro ao salvar no banco de dados. Verifique CPFs duplicados.');
@@ -287,12 +297,12 @@ export default function EmployeeRegistry() {
         }
 
         const { error: dbErr } = await supabase
-          .from('documents')
+          .from('Documentos')
           .upsert({
             owner_cpf: employee.cpf,
-            year: item.year,
-            month: item.month,
-            filename: cleanFileName,
+            Ano: item.year,
+            mês: item.month,
+            "Nome do arquivo": cleanFileName,
             file_path: cloudPath
           });
 

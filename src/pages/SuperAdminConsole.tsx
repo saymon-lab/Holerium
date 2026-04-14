@@ -100,15 +100,25 @@ export default function SuperAdminConsole() {
 
   const fetchEmployees = async () => {
     const { data, error } = await supabase
-      .from('employees')
+      .from('Funcionários')
       .select('*')
-      .order('name');
-    if (data) setEmployees(data);
+      .order('Nome');
+    if (data) {
+      const mapped = data.map((emp: any) => ({
+        id: emp.id,
+        name: emp.Nome,
+        cpf: emp.CPF,
+        role: emp.Função,
+        status: emp.Status,
+        avatar: emp.Avatar
+      }));
+      setEmployees(mapped);
+    }
   };
 
   const calculateStorageUsage = async () => {
     try {
-      const { count: empCount } = await supabase.from('employees').select('*', { count: 'exact', head: true });
+      const { count: empCount } = await supabase.from('Funcionários').select('*', { count: 'exact', head: true });
       const { count: logCount } = await supabase.from('access_logs').select('*', { count: 'exact', head: true });
       const total = (empCount || 0) + (logCount || 0);
       const percent = Math.min((total / 10000) * 100, 100);
@@ -125,8 +135,8 @@ export default function SuperAdminConsole() {
   const toggleAdminPrivilege = async (emp: Employee) => {
     const newRole = emp.role === 'admin' ? 'user' : 'admin';
     const { error } = await supabase
-      .from('employees')
-      .update({ role: newRole })
+      .from('Funcionários')
+      .update({ Função: newRole })
       .eq('id', emp.id);
 
     if (error) {
@@ -140,8 +150,8 @@ export default function SuperAdminConsole() {
     try {
       setLoading(true);
       const [empRes, docRes, logRes] = await Promise.all([
-        supabase.from('employees').select('*'),
-        supabase.from('documents').select('*'),
+        supabase.from('Funcionários').select('*'),
+        supabase.from('Documentos').select('*'),
         supabase.from('access_logs').select('*')
       ]);
 
@@ -190,13 +200,13 @@ export default function SuperAdminConsole() {
 
           // Restaurar Funcionários
           if (content.employees.length > 0) {
-            const { error: err1 } = await supabase.from('employees').upsert(content.employees);
+            const { error: err1 } = await supabase.from('Funcionários').upsert(content.employees);
             if (err1) throw new Error('Erro ao restaurar funcionários: ' + err1.message);
           }
 
           // Restaurar Documentos
           if (content.documents.length > 0) {
-            const { error: err2 } = await supabase.from('documents').upsert(content.documents);
+            const { error: err2 } = await supabase.from('Documentos').upsert(content.documents);
             if (err2) throw new Error('Erro ao restaurar documentos: ' + err2.message);
           }
 
@@ -302,12 +312,12 @@ export default function SuperAdminConsole() {
         }
 
         const { error: dbErr } = await supabase
-          .from('documents')
+          .from('Documentos')
           .upsert({
             owner_cpf: employee.cpf,
-            year: item.year,
-            month: item.month,
-            filename: cleanFileName,
+            Ano: item.year,
+            mês: item.month,
+            "Nome do arquivo": cleanFileName,
             file_path: cloudPath
           });
 
