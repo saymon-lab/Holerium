@@ -368,6 +368,15 @@ export default function SuperAdminConsole() {
           continue;
         }
 
+        // Verifica se já existe para decidir o log
+        const { data: existingDoc } = await supabase
+          .from('documents')
+          .select('id')
+          .eq('owner_cpf', employee.cpf)
+          .eq('year', item.year)
+          .eq('month', item.month)
+          .maybeSingle();
+
         const { error: dbErr } = await supabase
           .from('documents')
           .upsert({
@@ -381,7 +390,11 @@ export default function SuperAdminConsole() {
         if (dbErr) {
           addLog('error', `Erro Banco: ${dbErr.message}`);
         } else {
-          addLog('success', `Sucesso: ${employee.name} (${item.month}/${item.year})`);
+          if (existingDoc) {
+            addLog('update', `Atualizado: ${employee.name} (${item.month}/${item.year})`);
+          } else {
+            addLog('success', `Sucesso: ${employee.name} (${item.month}/${item.year})`);
+          }
         }
 
         setSyncProgress(prev => ({ ...prev, current: count }));
@@ -725,9 +738,16 @@ export default function SuperAdminConsole() {
                                 {syncLogs.map((log, i) => (
                                     <div key={i} className={cn(
                                         "text-[10px] font-medium flex items-center gap-2 pb-1 border-b border-slate-50",
-                                        log.type === 'error' ? "text-red-500" : log.type === 'success' ? "text-green-600" : "text-slate-500"
+                                        log.type === 'error' ? "text-red-500" : 
+                                        log.type === 'success' ? "text-green-600" : 
+                                        log.type === 'update' ? "text-blue-600" : "text-slate-500"
                                     )}>
-                                        <div className={cn("w-1 h-1 rounded-full", log.type === 'error' ? "bg-red-500" : log.type === 'success' ? "bg-green-500" : "bg-slate-300")} />
+                                        <div className={cn(
+                                            "w-1 h-1 rounded-full", 
+                                            log.type === 'error' ? "bg-red-500" : 
+                                            log.type === 'success' ? "bg-green-500" : 
+                                            log.type === 'update' ? "bg-blue-500" : "bg-slate-300"
+                                        )} />
                                         {log.msg}
                                     </div>
                                 ))}
