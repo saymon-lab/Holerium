@@ -289,14 +289,15 @@ export default function SuperAdminConsole() {
           continue;
         }
 
-        const cloudPath = `${employee.cpf}/${item.year}/${item.month}/${fileName}`;
+        const cleanFileName = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cloudPath = `${employee.cpf}/${item.year}/${item.month}/${cleanFileName}`;
         
         const { error: storageErr } = await supabase.storage
           .from('receipts')
           .upload(cloudPath, file, { upsert: true });
 
         if (storageErr) {
-          addLog('error', `Erro Cloud: ${storageErr.message} (${fileName})`);
+          addLog('error', `Erro Cloud: ${storageErr.message} (${cleanFileName})`);
           continue;
         }
 
@@ -306,7 +307,7 @@ export default function SuperAdminConsole() {
             owner_cpf: employee.cpf,
             year: item.year,
             month: item.month,
-            filename: fileName,
+            filename: cleanFileName,
             file_path: cloudPath
           });
 
