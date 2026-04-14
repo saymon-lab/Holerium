@@ -73,7 +73,7 @@ export default function Dashboard() {
 
         {/* Previous Years Column */}
         <div className="lg:col-span-4 flex flex-col gap-6">
-          {[2025, 2024].map((year) => (
+          {[2025].map((year) => (
             <motion.div
               key={year}
               whileHover={{ y: -4, backgroundColor: '#fdfdfd' }}
@@ -87,7 +87,7 @@ export default function Dashboard() {
                 <div>
                   <h3 className="text-2xl font-bold text-[#0B1F5B] mb-1">Ano {year}</h3>
                   <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">
-                    {year === 2025 ? '24 itens arquivados' : 'Relatórios consolidados'}
+                    Relatórios consolidados
                   </p>
                 </div>
               </div>
