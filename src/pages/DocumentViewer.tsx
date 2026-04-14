@@ -57,13 +57,13 @@ export default function DocumentViewer() {
     if (userCpf) loadCloudData();
   }, [userCpf]);
 
-  const loadCloudData = async () => {
-    try {
-      setLoading(true);
+      // Limpa o CPF para a busca (garante que case mesmo com formatos diferentes)
+      const cleanSearchCpf = userCpf.replace(/\D/g, '');
+      
       const { data, error: dbErr } = await supabase
         .from('documents')
         .select('*')
-        .eq('owner_cpf', userCpf);
+        .or(`owner_cpf.eq.${userCpf},owner_cpf.eq.${cleanSearchCpf}`);
 
       if (dbErr) throw dbErr;
 
@@ -94,11 +94,13 @@ export default function DocumentViewer() {
   }, [viewState, selectedYear, selectedMonth]);
 
   // 3. Atualizar meses disponíveis quando o ano for trocado
-  useEffect(() => {
     if (viewState === 'months' && selectedYear) {
       const monthsInYear = cloudDocuments
-        .filter(doc => doc.Ano === selectedYear)
-        .map(doc => months[parseInt(doc.mês) - 1]);
+        .filter(doc => doc.year === selectedYear)
+        .map(doc => {
+          const mIndex = parseInt(doc.month) - 1;
+          return months[mIndex] || 'Mês Inválido';
+        });
 
       setAvailableMonths(Array.from(new Set(monthsInYear)));
     }
@@ -118,7 +120,7 @@ export default function DocumentViewer() {
     setDocError(null);
     try {
       const monthNum = (months.indexOf(selectedMonth!) + 1).toString().padStart(2, '0');
-      const doc = cloudDocuments.find(d => d.Ano === selectedYear && d.mês === monthNum);
+      const doc = cloudDocuments.find(d => d.year === selectedYear && d.month === monthNum);
 
       if (!doc) throw new Error('Documento não encontrado na sua conta. Entre em contato com o RH.');
 
