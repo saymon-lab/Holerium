@@ -96,7 +96,7 @@ export default function Login() {
       if (dbError) throw dbError;
 
       if (found) {
-        if (loginTab === 'admin' && found.role !== 'Administrador do Sistema') {
+        if (loginTab === 'admin' && !['admin', 'superadmin', 'Administrador do Sistema'].includes(found.role)) {
           setError('Este usuário não possui privilégios administrativos.');
           await recordLog(found.name, 'Gestão', 'erro', 'Tentativa de acesso admin sem privilégio');
           return;
