@@ -99,10 +99,19 @@ export default function SuperAdminConsole() {
 
 
   const { initScripts, authenticate, showPicker, listFiles, downloadFile, isReady } = useGoogleDrive();
+  const [isDeveloper, setIsDeveloper] = useState(false);
 
   useEffect(() => {
     fetchData();
     initScripts(); // Inicializa os scripts do Google no carregamento
+    
+    // Verifica se o usuário atual é o Desenvolvedor Master
+    const userJson = localStorage.getItem('currentUser');
+    if (userJson) {
+      const user = JSON.parse(userJson);
+      const devRoles = ['superadmin', 'Desenvolvedor Geral', 'Desenvolvedor Master'];
+      setIsDeveloper(devRoles.includes(user.role));
+    }
   }, []);
 
   const handleGoogleDriveSync = async () => {
@@ -839,14 +848,16 @@ export default function SuperAdminConsole() {
                         O sistema busca pastas no formato "MM-AAAA" e arquivos que contenham o nome ou CPF do funcionário.
                     </p>
                 </div>
-                <button
-                    disabled={isSyncing}
-                    onClick={handleGoogleDriveSync}
-                    className="w-full py-4 bg-white text-secondary border-2 border-surface-container-high rounded-2xl font-bold hover:bg-surface-container-low transition-all flex items-center justify-center gap-3 disabled:opacity-50 mb-3"
-                >
-                    <Chrome className="w-5 h-5 text-primary" />
-                    Sincronizar via Google Drive
-                </button>
+                {isDeveloper && (
+                  <button
+                      disabled={isSyncing}
+                      onClick={handleGoogleDriveSync}
+                      className="w-full py-4 bg-white text-secondary border-2 border-surface-container-high rounded-2xl font-bold hover:bg-surface-container-low transition-all flex items-center justify-center gap-3 disabled:opacity-50 mb-3"
+                  >
+                      <Chrome className="w-5 h-5 text-primary" />
+                      Sincronizar via Google Drive
+                  </button>
+                )}
 
                 <button
                     disabled={isSyncing}
