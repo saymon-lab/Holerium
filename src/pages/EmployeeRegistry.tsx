@@ -57,6 +57,14 @@ export default function EmployeeRegistry() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [syncLogs, setSyncLogs] = useState<{ type: 'info' | 'error' | 'success', msg: string }[]>([]);
+  const [currentUser] = useState(() => {
+    try {
+      return JSON.parse(localStorage.getItem('currentUser') || '{}');
+    } catch { return {}; }
+  });
+
+  const userIsMaster = ['Desenvolvedor Geral', 'superadmin'].includes(currentUser?.role);
+
 
   useEffect(() => {
     fetchEmployees();
@@ -416,7 +424,13 @@ export default function EmployeeRegistry() {
                   </td>
                   <td className="px-8 py-6 text-right">
                     <div className="flex justify-end gap-2 items-center">
-                      {!deleteStep[emp.id] ? (
+                      {/* Travar o perfil mestre para quem não é Master Developer */}
+                      {(emp.cpf === '000.000.000-00' || emp.role === 'superadmin' || emp.role === 'Desenvolvedor Geral') && !userIsMaster ? (
+                        <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-100 rounded-full text-[10px] font-bold text-slate-400">
+                          <Lock className="w-3 h-3" />
+                          <span>ACESSO RESTRITO</span>
+                        </div>
+                      ) : !deleteStep[emp.id] ? (
                         <>
                           <button className="p-2 rounded-full hover:bg-white text-slate-400 hover:text-blue-900 transition-colors shadow-sm" title="Editar">
                             <Edit2 className="w-4 h-4" />
