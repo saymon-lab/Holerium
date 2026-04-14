@@ -49,6 +49,40 @@ export default function SuperAdminConsole() {
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [syncLogs, setSyncLogs] = useState<{ type: 'info' | 'error' | 'success', msg: string }[]>([]);
   const [storageStats, setStorageStats] = useState({ usedRecords: 0, percent: 0, text: 'Conectando...' });
+  const [menuPermissions, setMenuPermissions] = useState(() => {
+    try {
+      const saved = localStorage.getItem('menu_permissions_v1');
+      return saved ? JSON.parse(saved) : {
+        admin: ['/dashboard', '/documents', '/admin', '/logs', '/settings'],
+        collaborator: ['/dashboard', '/documents', '/settings']
+      };
+    } catch {
+      return {
+        admin: ['/dashboard', '/documents', '/admin', '/logs', '/settings'],
+        collaborator: ['/dashboard', '/documents', '/settings']
+      };
+    }
+  });
+
+  const availableMenus = [
+    { path: '/dashboard', label: 'Início' },
+    { path: '/documents', label: 'Meus Documentos' },
+    { path: '/admin', label: 'Console Admin' },
+    { path: '/logs', label: 'Logs de Auditoria' },
+    { path: '/settings', label: 'Meu Perfil' },
+  ];
+
+  const togglePermission = (role: 'admin' | 'collaborator', path: string) => {
+    const newPerms = { ...menuPermissions };
+    if (newPerms[role].includes(path)) {
+      newPerms[role] = newPerms[role].filter((p: string) => p !== path);
+    } else {
+      newPerms[role] = [...newPerms[role], path];
+    }
+    setMenuPermissions(newPerms);
+    localStorage.setItem('menu_permissions_v1', JSON.stringify(newPerms));
+  };
+
 
   useEffect(() => {
     fetchData();
@@ -468,6 +502,71 @@ export default function SuperAdminConsole() {
              </div>
           </div>
         </section>
+
+        {/* Visibilidade de Menus */}
+        <section className="bg-white rounded-3xl p-8 shadow-sm border border-surface-container-high md:col-span-3 space-y-6">
+          <div className="flex items-center gap-3 border-b border-surface-container-high pb-4">
+            <Settings className="w-5 h-5 text-primary" />
+            <h3 className="text-xl font-bold text-on-surface">Visibilidade de Menus por Nível</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Permissões Admin */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Shield className="w-4 h-4 text-primary" />
+                <h4 className="font-bold text-on-surface">Menu dos Administradores</h4>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {availableMenus.map(menu => (
+                  <button
+                    key={`admin-${menu.path}`}
+                    onClick={() => togglePermission('admin', menu.path)}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-xs font-bold transition-all border",
+                      menuPermissions.admin.includes(menu.path)
+                        ? "bg-primary text-white border-primary shadow-md shadow-primary/20"
+                        : "bg-white text-secondary border-surface-container-high hover:border-primary/30"
+                    )}
+                  >
+                    {menu.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Permissões Colaborador */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Users className="w-4 h-4 text-secondary" />
+                <h4 className="font-bold text-on-surface">Menu dos Colaboradores</h4>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {availableMenus.map(menu => (
+                  <button
+                    key={`collab-${menu.path}`}
+                    onClick={() => togglePermission('collaborator', menu.path)}
+                    className={cn(
+                      "px-4 py-2 rounded-full text-xs font-bold transition-all border",
+                      menuPermissions.collaborator.includes(menu.path)
+                        ? "bg-secondary text-white border-secondary shadow-md shadow-secondary/20"
+                        : "bg-white text-secondary border-surface-container-high hover:border-secondary/30"
+                    )}
+                  >
+                    {menu.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
+            <p className="text-[10px] text-primary font-bold">
+              * Nota: O Console Geral (este que você está usando) é exclusivo para o Desenvolvedor Master e não pode ser ocultado.
+            </p>
+          </div>
+        </section>
+
 
         {/* NOVA SEÇÃO: Sincronização Cloud (Importação em Lote) */}
         <section className="bg-white rounded-3xl p-8 shadow-sm border border-surface-container-high md:col-span-3 space-y-6">
