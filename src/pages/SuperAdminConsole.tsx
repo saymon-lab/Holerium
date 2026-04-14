@@ -850,12 +850,26 @@ export default function SuperAdminConsole() {
                 </div>
                 {isDeveloper && (
                   <button
-                      disabled={isSyncing}
+                      disabled={isSyncing || !isReady}
                       onClick={handleGoogleDriveSync}
-                      className="w-full py-4 bg-white text-secondary border-2 border-surface-container-high rounded-2xl font-bold hover:bg-surface-container-low transition-all flex items-center justify-center gap-3 disabled:opacity-50 mb-3"
+                      className={cn(
+                        "w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 disabled:opacity-50 mb-3 border-2",
+                        !isReady 
+                          ? "bg-surface-container-low text-secondary-variant border-surface-container-high cursor-wait" 
+                          : "bg-white text-secondary border-surface-container-high hover:bg-surface-container-low active:scale-95"
+                      )}
                   >
-                      <Chrome className="w-5 h-5 text-primary" />
-                      Sincronizar via Google Drive
+                      {isReady ? (
+                        <>
+                          <Chrome className="w-5 h-5 text-primary" />
+                          Sincronizar via Google Drive
+                        </>
+                      ) : (
+                        <>
+                          <Loader2 className="w-5 h-5 animate-spin text-secondary-variant" />
+                          Carregando Google...
+                        </>
+                      )}
                   </button>
                 )}
 
