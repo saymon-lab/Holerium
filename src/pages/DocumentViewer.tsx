@@ -57,6 +57,9 @@ export default function DocumentViewer() {
     if (userCpf) loadCloudData();
   }, [userCpf]);
 
+  const loadCloudData = async () => {
+    try {
+      setLoading(true);
       // Limpa o CPF para a busca (garante que case mesmo com formatos diferentes)
       const cleanSearchCpf = userCpf.replace(/\D/g, '');
       
