@@ -56,7 +56,11 @@ export default function SuperAdminConsole() {
 
   const fetchData = async () => {
     setLoading(true);
-    await Promise.all([fetchEmployees(), calculateStorageUsage()]);
+    try {
+      await Promise.all([fetchEmployees(), calculateStorageUsage()]);
+    } catch (err) {
+      console.error('Erro ao recarregar dados:', err);
+    }
     setLoading(false);
   };
 
@@ -98,14 +102,88 @@ export default function SuperAdminConsole() {
     }
   };
 
-  const handleExportBackup = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(employees));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href",     dataStr);
-    downloadAnchorNode.setAttribute("download", `portal_backup_${new Date().toISOString().split('T')[0]}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+  const handleExportBackup = async () => {
+    try {
+      setLoading(true);
+      const [empRes, docRes, logRes] = await Promise.all([
+        supabase.from('employees').select('*'),
+        supabase.from('documents').select('*'),
+        supabase.from('access_logs').select('*')
+      ]);
+
+      const backupData = {
+        version: '1.0',
+        timestamp: new Date().toISOString(),
+        employees: empRes.data || [],
+        documents: docRes.data || [],
+        logs: logRes.data || []
+      };
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backupData, null, 2));
+      const downloadAnchorNode = document.createElement('a');
+      downloadAnchorNode.setAttribute("href",     dataStr);
+      downloadAnchorNode.setAttribute("download", `portal_backup_completo_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchorNode);
+      downloadAnchorNode.click();
+      downloadAnchorNode.remove();
+      alert('Backup exportado com sucesso!');
+    } catch (err: any) {
+      alert('Erro ao exportar backup: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleImportBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm('Deseja realmente restaurar os dados deste backup? Isso atualizará os registros existentes.')) {
+      e.target.value = '';
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        try {
+          const content = JSON.parse(event.target?.result as string);
+          
+          if (!content.employees || !content.documents) {
+            throw new Error('Formato de backup inválido.');
+          }
+
+          // Restaurar Funcionários
+          if (content.employees.length > 0) {
+            const { error: err1 } = await supabase.from('employees').upsert(content.employees);
+            if (err1) throw new Error('Erro ao restaurar funcionários: ' + err1.message);
+          }
+
+          // Restaurar Documentos
+          if (content.documents.length > 0) {
+            const { error: err2 } = await supabase.from('documents').upsert(content.documents);
+            if (err2) throw new Error('Erro ao restaurar documentos: ' + err2.message);
+          }
+
+          // Restaurar Logs (opcional)
+          if (content.logs && content.logs.length > 0) {
+            await supabase.from('access_logs').upsert(content.logs);
+          }
+
+          alert('Restauração concluída com sucesso!');
+          fetchData();
+        } catch (err: any) {
+          alert('Erro no processamento do arquivo: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    } catch (err: any) {
+      alert('Erro ao ler arquivo: ' + err.message);
+    } finally {
+      setLoading(false);
+      e.target.value = '';
+    }
   };
 
   const handleResetSystem = () => {
@@ -287,20 +365,48 @@ export default function SuperAdminConsole() {
           </div>
 
           <button 
-            onClick={fetchEmployees}
-            className="w-full py-4 bg-surface-container hover:bg-surface-container-high text-primary rounded-2xl font-bold transition-all flex items-center justify-center gap-2"
+            onClick={fetchData}
+            disabled={loading}
+            className="w-full py-4 bg-surface-container hover:bg-surface-container-high text-primary rounded-2xl font-bold transition-all flex items-center justify-center gap-2 disabled:opacity-50"
           >
-            <RefreshCcw className="w-4 h-4" />
+            <RefreshCcw className={cn("w-4 h-4", loading && "animate-spin")} />
             Atualizar Status
           </button>
           
-          <button 
-            onClick={handleResetSystem}
-            className="w-full py-4 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-100 transition-all flex items-center justify-center gap-2"
-          >
-            <Trash2 className="w-4 h-4" />
-            Limpar Cache Local
-          </button>
+          <div className="pt-4 border-t border-surface-container-high space-y-3">
+            <p className="text-[10px] font-bold text-secondary uppercase tracking-widest px-1">Manutenção de Dados</p>
+            
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                onClick={handleExportBackup}
+                disabled={loading}
+                className="py-3 bg-white border border-surface-container-high text-on-surface rounded-xl text-xs font-bold hover:bg-surface-container transition-all flex items-center justify-center gap-2"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Backup
+              </button>
+              
+              <label className="py-3 bg-white border border-surface-container-high text-on-surface rounded-xl text-xs font-bold hover:bg-surface-container transition-all flex items-center justify-center gap-2 cursor-pointer">
+                <Upload className="w-3.5 h-3.5" />
+                Restaurar
+                <input 
+                  type="file" 
+                  accept=".json" 
+                  className="hidden" 
+                  onChange={handleImportBackup}
+                  disabled={loading}
+                />
+              </label>
+            </div>
+
+            <button 
+              onClick={handleResetSystem}
+              className="w-full py-3 bg-red-50 text-red-600 rounded-xl text-xs font-bold hover:bg-red-100 transition-all flex items-center justify-center gap-2"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+              Limpar Cache Local
+            </button>
+          </div>
         </section>
 
         {/* Gestão de Privilégios */}
@@ -356,14 +462,10 @@ export default function SuperAdminConsole() {
             ))}
           </div>
 
-          <div className="flex items-center gap-4 pt-4">
-             <button 
-              onClick={handleExportBackup}
-              className="flex-1 py-4 border border-surface-container-high text-on-surface rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-surface-container transition-all"
-             >
-               <Download className="w-5 h-5" />
-               Exportar Lista JSON
-             </button>
+          <div className="flex items-center gap-4 pt-4 border-t border-surface-container-high">
+             <div className="flex-1 text-xs text-secondary italic">
+               * O backup exporta a lista completa de funcionários, documentos vinculados e logs de auditoria.
+             </div>
           </div>
         </section>
 
