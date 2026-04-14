@@ -72,7 +72,7 @@ export default function DocumentViewer() {
 
       // Extrair anos únicos
       const foundYears = new Set<string>();
-      data?.forEach(doc => foundYears.add(doc.year));
+      documentsData?.forEach(doc => foundYears.add(doc.year));
       const sortedYears = Array.from(foundYears).sort((a, b) => b.localeCompare(a));
       setYears(sortedYears);
 
