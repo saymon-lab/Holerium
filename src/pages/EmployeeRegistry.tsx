@@ -11,8 +11,13 @@ import {
   Trash2,
   AlertTriangle,
   X,
-  ArrowLeft
+  ArrowLeft,
+  CloudCog,
+  Loader2,
+  FileUp,
+  History
 } from 'lucide-react';
+
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
@@ -49,6 +54,9 @@ export default function EmployeeRegistry() {
   const navigate = useNavigate();
   const [employeesList, setEmployeesList] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
+  const [syncLogs, setSyncLogs] = useState<{ type: 'info' | 'error' | 'success', msg: string }[]>([]);
 
   useEffect(() => {
     fetchEmployees();
@@ -195,6 +203,119 @@ export default function EmployeeRegistry() {
       if (fileInputRef.current) fileInputRef.current.value = '';
     };
     reader.readAsText(file);
+  };
+
+  const startBatchSync = async () => {
+    try {
+      // @ts-ignore
+      const handle = await window.showDirectoryPicker({ mode: 'read' });
+      setIsSyncing(true);
+      setSyncLogs([{ type: 'info', msg: `Iniciando varredura em: ${handle.name}...` }]);
+      
+      const filesToUpload: { handle: FileSystemFileHandle, path: string, year: string, month: string }[] = [];
+      const fullHistory: { type: 'info' | 'error' | 'success', msg: string }[] = [];
+
+      const addLog = (type: 'info' | 'error' | 'success', msg: string) => {
+        const newLog = { type, msg };
+        fullHistory.push(newLog);
+        setSyncLogs(prev => [newLog, ...prev.slice(0, 19)]);
+      };
+      
+      const scan = async (dirHandle: FileSystemDirectoryHandle, currentPath: string = '') => {
+        // @ts-ignore
+        for await (const entry of dirHandle.values()) {
+          if (entry.kind === 'directory') {
+            await scan(entry, `${currentPath}${entry.name}/`);
+          } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
+            const pathParts = currentPath.split('/').filter(Boolean);
+            let year = '2024';
+            let month = '01';
+            const folderMatch = entry.name.match(/(\d{2})-(\d{4})/) || (pathParts.length > 0 ? pathParts[pathParts.length-1].match(/(\d{2})-(\d{4})/) : null);
+            if (folderMatch) {
+              month = folderMatch[1];
+              year = folderMatch[2];
+            } else if (pathParts.length > 0) {
+              const lastFolder = pathParts[pathParts.length-1];
+              if (/^\d{4}$/.test(lastFolder)) year = lastFolder;
+            }
+            filesToUpload.push({ handle: entry as FileSystemFileHandle, path: `${currentPath}${entry.name}`, year, month });
+          }
+        }
+      };
+
+      await scan(handle);
+      setSyncProgress({ current: 0, total: filesToUpload.length, status: 'Preparando upload...' });
+      
+      let count = 0;
+      for (const item of filesToUpload) {
+        count++;
+        const file = await item.handle.getFile();
+        const fileName = item.handle.name;
+        
+        const cleanName = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        const cleanCpf = fileName.replace(/\D/g, '');
+        
+        const employee = employeesList.find(emp => {
+          const empCleanCpf = emp.cpf.replace(/\D/g, '');
+          const empCleanName = emp.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+          return empCleanCpf === cleanCpf || cleanName.includes(empCleanName) || empCleanName.includes(cleanName.replace('.PDF', ''));
+        });
+
+        if (!employee) {
+          addLog('error', `Não identificado: ${fileName}`);
+          continue;
+        }
+
+        const cloudPath = `${employee.cpf}/${item.year}/${item.month}/${fileName}`;
+        
+        const { error: storageErr } = await supabase.storage
+          .from('receipts')
+          .upload(cloudPath, file, { upsert: true });
+
+        if (storageErr) {
+          addLog('error', `Erro Cloud: ${storageErr.message} (${fileName})`);
+          continue;
+        }
+
+        const { error: dbErr } = await supabase
+          .from('documents')
+          .upsert({
+            owner_cpf: employee.cpf,
+            year: item.year,
+            month: item.month,
+            filename: fileName,
+            file_path: cloudPath
+          });
+
+        if (dbErr) {
+          addLog('error', `Erro Banco: ${dbErr.message}`);
+        } else {
+          addLog('success', `Sucesso: ${employee.name} (${item.month}/${item.year})`);
+        }
+
+        setSyncProgress(prev => ({ ...prev, current: count }));
+      }
+
+      alert('Sincronização concluída!');
+
+      // GERAR ARQUIVO DE LOG PARA O USUÁRIO
+      const logHeader = `RELATÓRIO DE SINCRONIZAÇÃO - PORTAL SUPER\nData: ${new Date().toLocaleString()}\nTotal Processado: ${filesToUpload.length}\n------------------------------------------\n\n`;
+      const logBody = fullHistory.map(l => `[${l.type.toUpperCase()}] ${l.msg}`).join('\n');
+      const blob = new Blob([logHeader + logBody], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `log_sincronia_${new Date().toISOString().split('T')[0]}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+    } catch (err: any) {
+      if (err.name !== 'AbortError') alert(`Erro: ${err.message}`);
+    } finally {
+      setIsSyncing(false);
+    }
   };
 
   return (
@@ -352,6 +473,93 @@ export default function EmployeeRegistry() {
           </table>
         </div>
       </div>
+
+      <section className="bg-white rounded-3xl p-8 shadow-sm border border-surface-container-high mt-8 space-y-6">
+        <div className="flex items-center justify-between border-b border-surface-container-high pb-4">
+          <div className="flex items-center gap-3">
+            <CloudCog className="w-5 h-5 text-primary" />
+            <h3 className="text-xl font-bold text-on-surface">SincronizaÃ§Ã£o Cloud (ImportaÃ§Ã£o em Lote)</h3>
+          </div>
+          {isSyncing && (
+              <div className="flex items-center gap-2 text-primary font-bold animate-pulse text-xs">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Processando...
+              </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="md:col-span-1 space-y-4">
+              <p className="text-sm text-secondary leading-relaxed">
+                  Selecione a pasta raiz do seu servidor de recibos. O sistema irÃ¡ identificar automaticamente os funcionÃ¡rios por nome ou CPF, anos e meses para cada PDF e subirÃ¡ para a nuvem.
+              </p>
+              <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Dica de OrganizaÃ§Ã£o</p>
+                  <p className="text-[10px] text-secondary">
+                      O sistema busca pastas no formato "MM-AAAA" e arquivos que contenham o nome ou CPF do funcionÃ¡rio.
+                  </p>
+              </div>
+              <button
+                  disabled={isSyncing}
+                  onClick={startBatchSync}
+                  className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100"
+              >
+                  <FileUp className="w-5 h-5" />
+                  Selecionar Pasta e Sincronizar
+              </button>
+          </div>
+
+          <div className="md:col-span-2 bg-surface-container-low rounded-3xl p-6 border border-surface-container-high relative overflow-hidden flex flex-col min-h-[300px]">
+              {isSyncing ? (
+                  <div className="space-y-6 animate-fade-in">
+                      <div className="space-y-2">
+                         <div className="flex justify-between items-end">
+                              <span className="text-xs font-bold text-secondary uppercase tracking-widest">Progresso do Upload</span>
+                              <span className="text-sm font-black text-primary">{Math.round((syncProgress.current / syncProgress.total) * 100)}%</span>
+                         </div>
+                         <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                              <motion.div 
+                                  className="h-full bg-primary"
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${(syncProgress.current / syncProgress.total) * 100}%` }}
+                              />
+                         </div>
+                         <p className="text-[10px] text-secondary-variant font-medium">{syncProgress.current} de {syncProgress.total} arquivos processados</p>
+                      </div>
+
+                      <div className="space-y-2">
+                          <span className="text-[10px] font-bold text-secondary uppercase tracking-widest flex items-center gap-2">
+                              <History className="w-3 h-3" />
+                              Monitor de Sincronia
+                          </span>
+                          <div className="bg-white rounded-xl p-4 border border-surface-container-high h-[150px] overflow-auto flex flex-col gap-2 shadow-inner">
+                              {syncLogs.map((log, i) => (
+                                  <div key={i} className={cn(
+                                      "text-[10px] font-medium flex items-center gap-2 pb-1 border-b border-slate-50",
+                                      log.type === 'error' ? "text-red-500" : log.type === 'success' ? "text-green-600" : "text-slate-500"
+                                  )}>
+                                      <div className={cn("w-1 h-1 rounded-full", log.type === 'error' ? "bg-red-500" : log.type === 'success' ? "bg-green-500" : "bg-slate-300")} />
+                                      {log.msg}
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  </div>
+              ) : (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4 opacity-50">
+                      <div className="w-16 h-16 bg-surface-container-high rounded-full flex items-center justify-center">
+                          <CloudCog className="w-8 h-8 text-outline" />
+                      </div>
+                      <div>
+                          <p className="font-bold text-on-surface">Aguardando InÃcio</p>
+                          <p className="text-xs text-secondary">A sincronizaÃ§Ã£o ainda nÃ£o foi iniciada.</p>
+                      </div>
+                  </div>
+              )}
+          </div>
+        </div>
+      </section>
+
     </div>
   );
 }
