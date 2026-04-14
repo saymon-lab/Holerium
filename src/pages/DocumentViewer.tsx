@@ -60,14 +60,15 @@ export default function DocumentViewer() {
       // Limpa o CPF para a busca (garante que case mesmo com formatos diferentes)
       const cleanSearchCpf = userCpf.replace(/\D/g, '');
       
-      const { data, error: dbErr } = await supabase
+      const { data: documentsData, error: dbErr } = await supabase
         .from('documents')
         .select('*')
-        .or(`owner_cpf.eq.${userCpf},owner_cpf.eq.${cleanSearchCpf}`);
+        .or(`owner_cpf.eq."${userCpf}",owner_cpf.eq."${cleanSearchCpf}"`);
 
       if (dbErr) throw dbErr;
 
-      setCloudDocuments(data || []);
+      console.log('Documentos encontrados:', documentsData);
+      setCloudDocuments(documentsData || []);
 
       // Extrair anos únicos
       const foundYears = new Set<string>();
