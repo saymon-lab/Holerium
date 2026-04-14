@@ -71,29 +71,9 @@ export default function Dashboard() {
           </div>
         </motion.div>
 
-        {/* Previous Years Column */}
+        {/* Previous Years Column - Temporarily hidden as requested */}
         <div className="lg:col-span-4 flex flex-col gap-6">
-          {[2025].map((year) => (
-            <motion.div
-              key={year}
-              whileHover={{ y: -4, backgroundColor: '#fdfdfd' }}
-              onClick={() => handleOpenYear(year.toString())}
-              className="flex-1 bg-white border border-slate-100 rounded-[2rem] p-8 flex items-center justify-between group cursor-pointer shadow-sm"
-            >
-              <div className="flex items-center gap-6">
-                <div className="w-14 h-14 rounded-2xl bg-slate-50 flex items-center justify-center group-hover:bg-[#E9C176]/10 transition-colors border border-slate-100">
-                  <Archive className="w-6 h-6 text-slate-400 group-hover:text-[#E9C176]" />
-                </div>
-                <div>
-                  <h3 className="text-2xl font-bold text-[#0B1F5B] mb-1">Ano {year}</h3>
-                  <p className="text-xs text-slate-400 font-bold uppercase tracking-tighter">
-                    Relatórios consolidados
-                  </p>
-                </div>
-              </div>
-              <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-[#0B1F5B] transition-all group-hover:translate-x-1" />
-            </motion.div>
-          ))}
+          {/* Empty column or future archive years */}
         </div>
       </div>
     </div>
