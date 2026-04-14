@@ -94,15 +94,18 @@ export default function DocumentViewer() {
     else sessionStorage.removeItem('doc_selectedMonth');
   }, [viewState, selectedYear, selectedMonth]);
 
-  // 3. Atualizar meses disponíveis quando o ano for trocado
-    if (viewState === 'months' && selectedYear) {
+  // 3. Atualizar meses disponíveis quando o ano for trocado ou os documentos carregarem
+  useEffect(() => {
+    if (viewState === 'months' && selectedYear && cloudDocuments.length > 0) {
       const monthsInYear = cloudDocuments
-        .filter(doc => doc.year === selectedYear)
+        .filter(doc => String(doc.year) === String(selectedYear))
         .map(doc => {
           const mIndex = parseInt(doc.month) - 1;
-          return months[mIndex] || 'Mês Inválido';
-        });
+          return months[mIndex];
+        })
+        .filter(Boolean);
 
+      console.log('Meses disponíveis em ' + selectedYear + ':', monthsInYear);
       setAvailableMonths(Array.from(new Set(monthsInYear)));
     }
   }, [viewState, selectedYear, cloudDocuments]);
@@ -114,14 +117,14 @@ export default function DocumentViewer() {
     } else {
       setPdfUrl(null);
     }
-  }, [viewState, selectedYear, selectedMonth]);
+  }, [viewState, selectedYear, selectedMonth, cloudDocuments]);
 
   const loadRealPDF = async () => {
     setLoading(true);
     setDocError(null);
     try {
       const monthNum = (months.indexOf(selectedMonth!) + 1).toString().padStart(2, '0');
-      const doc = cloudDocuments.find(d => d.year === selectedYear && d.month === monthNum);
+      const doc = cloudDocuments.find(d => String(d.year) === String(selectedYear) && String(d.month) === String(monthNum));
 
       if (!doc) throw new Error('Documento não encontrado na sua conta. Entre em contato com o RH.');
 
@@ -205,23 +208,23 @@ export default function DocumentViewer() {
               }}
               className={cn(
                 "bg-white p-6 rounded-2xl border border-surface-container-high shadow-sm transition-all flex items-center gap-5 group text-left",
-                isAvailable ? "hover:shadow-md hover:border-primary/30" : "opacity-60 grayscale cursor-not-allowed"
+                isAvailable ? "hover:shadow-md hover:border-emerald-500/30 font-medium" : "opacity-60 grayscale cursor-not-allowed"
               )}
             >
               <div className={cn(
                 "w-14 h-14 rounded-full flex items-center justify-center transition-colors",
-                isAvailable ? "bg-blue-50 text-primary group-hover:bg-primary group-hover:text-white" : "bg-slate-100 text-slate-400"
+                isAvailable ? "bg-emerald-50 text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white" : "bg-slate-100 text-slate-400"
               )}>
                 {isAvailable ? <FileText className="w-6 h-6" /> : <Lock className="w-6 h-6" />}
               </div>
               <div className="flex flex-col">
                 <span className={cn(
                   "font-bold text-lg transition-colors",
-                  isAvailable ? "text-on-surface group-hover:text-primary" : "text-slate-400"
+                  isAvailable ? "text-on-surface group-hover:text-emerald-700" : "text-slate-400"
                 )}>{month}</span>
                 <span className="text-[10px] uppercase tracking-widest font-bold mt-1">
                   {isAvailable ? (
-                    <span className="text-green-600 flex items-center gap-1">Disponível</span>
+                    <span className="text-emerald-600 flex items-center gap-1">Disponível</span>
                   ) : (
                     <span className="text-slate-400 flex items-center gap-1">Indisponível</span>
                   )}
