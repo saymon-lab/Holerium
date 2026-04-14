@@ -29,11 +29,11 @@ export default function Sidebar() {
   });
 
   const userName = currentUser?.name || 'Administrador';
-  const userRole = currentUser?.role || 'Administrador';
+  const userRole = currentUser?.role || 'user';
   const userAvatar = currentUser?.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80';
-  const userLevel = userRole === 'Desenvolvedor Geral' ? 'Desenvolvedor' : currentUser ? 'Colaborador' : 'Acesso Total';
-  const userIsAdmin = userRole === 'Administrador do Sistema' || userRole === 'Administrador';
-  const userIsSuper = userRole === 'Desenvolvedor Geral';
+  const userIsSuper = ['Desenvolvedor Geral', 'superadmin'].includes(userRole);
+  const userIsAdmin = ['Administrador do Sistema', 'Administrador', 'admin', 'superadmin', 'Desenvolvedor Geral'].includes(userRole);
+  const userLevel = userIsSuper ? 'Desenvolvedor' : userIsAdmin ? 'Admin' : 'Colaborador';
 
   const visibleNavItems = navItems.filter(item => {
     if (userIsSuper) return true;
