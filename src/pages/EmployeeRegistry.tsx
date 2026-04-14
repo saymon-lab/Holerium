@@ -478,7 +478,7 @@ export default function EmployeeRegistry() {
         <div className="flex items-center justify-between border-b border-surface-container-high pb-4">
           <div className="flex items-center gap-3">
             <CloudCog className="w-5 h-5 text-primary" />
-            <h3 className="text-xl font-bold text-on-surface">SincronizaÃ§Ã£o Cloud (ImportaÃ§Ã£o em Lote)</h3>
+            <h3 className="text-xl font-bold text-on-surface">Sincronização Cloud (Importação em Lote)</h3>
           </div>
           {isSyncing && (
               <div className="flex items-center gap-2 text-primary font-bold animate-pulse text-xs">
@@ -491,12 +491,12 @@ export default function EmployeeRegistry() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-1 space-y-4">
               <p className="text-sm text-secondary leading-relaxed">
-                  Selecione a pasta raiz do seu servidor de recibos. O sistema irÃ¡ identificar automaticamente os funcionÃ¡rios por nome ou CPF, anos e meses para cada PDF e subirÃ¡ para a nuvem.
+                  Selecione a pasta raiz do seu servidor de recibos. O sistema irá identificar automaticamente os funcionários por nome ou CPF, anos e meses para cada PDF e subirá para a nuvem.
               </p>
               <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
-                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Dica de OrganizaÃ§Ã£o</p>
+                  <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Dica de Organização</p>
                   <p className="text-[10px] text-secondary">
-                      O sistema busca pastas no formato "MM-AAAA" e arquivos que contenham o nome ou CPF do funcionÃ¡rio.
+                      O sistema busca pastas no formato "MM-AAAA" e arquivos que contenham o nome ou CPF do funcionário.
                   </p>
               </div>
               <button
@@ -551,8 +551,8 @@ export default function EmployeeRegistry() {
                           <CloudCog className="w-8 h-8 text-outline" />
                       </div>
                       <div>
-                          <p className="font-bold text-on-surface">Aguardando InÃcio</p>
-                          <p className="text-xs text-secondary">A sincronizaÃ§Ã£o ainda nÃ£o foi iniciada.</p>
+                          <p className="font-bold text-on-surface">Aguardando Início</p>
+                          <p className="text-xs text-secondary">A sincronização ainda não foi iniciada.</p>
                       </div>
                   </div>
               )}
