@@ -274,10 +274,15 @@ export default function EmployeeRegistry() {
           
           if (!empCleanName || !empCleanCpf) return false;
 
-          return (cleanCpfFromFileName.includes(empCleanCpf) && empCleanCpf.length >= 11) || 
-                 currentFileName.includes(empCleanName) || 
-                 empCleanName.includes(baseFileName) ||
-                 baseFileName.includes(empCleanName);
+          // 1. Tenta casar por CPF exato
+          if (cleanCpfFromFileName.includes(empCleanCpf) && empCleanCpf.length >= 11) return true;
+
+          // 2. Tenta casar se TODAS as palavras do arquivo (com 3+ letras) estão no nome do funcionário
+          const fileWords = baseFileName.split(/[\s._-]+/).filter(w => w.length > 2);
+          if (fileWords.length > 0 && fileWords.every(word => empCleanName.includes(word))) return true;
+
+          // 3. Tenta casar se o nome do funcionário (resumido) está no arquivo
+          return currentFileName.includes(empCleanName) || empCleanName.includes(baseFileName);
         });
 
         if (!employee) {
