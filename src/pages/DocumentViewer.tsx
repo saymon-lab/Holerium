@@ -61,7 +61,7 @@ export default function DocumentViewer() {
     try {
       setLoading(true);
       const { data, error: dbErr } = await supabase
-        .from('Documentos')
+        .from('documents')
         .select('*')
         .eq('owner_cpf', userCpf);
 
@@ -71,7 +71,7 @@ export default function DocumentViewer() {
 
       // Extrair anos únicos
       const foundYears = new Set<string>();
-      data?.forEach(doc => foundYears.add(doc.Ano));
+      data?.forEach(doc => foundYears.add(doc.year));
       const sortedYears = Array.from(foundYears).sort((a, b) => b.localeCompare(a));
       setYears(sortedYears);
 

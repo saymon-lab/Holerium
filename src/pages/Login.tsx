@@ -87,26 +87,22 @@ export default function Login() {
     const cleanInput = cpf.replace(/\D/g, '').trim(); 
 
     try {
+      // Tenta buscar tanto pelo CPF digitado quanto pelo CPF limpo (sem pontos)
       const { data: foundRaw, error: dbError } = await supabase
-        .from('Funcionários')
+        .from('employees')
         .select('*')
-        .eq('CPF', cpf)
+        .or(`cpf.eq."${cpf}",cpf.eq."${cleanInput}"`)
         .maybeSingle();
 
       if (dbError) throw dbError;
 
       if (foundRaw) {
-        // Mapeia de volta para o formato esperado pelo resto do app
-        const found = {
-          id: foundRaw.id,
-          name: foundRaw.Nome,
-          role: foundRaw.Função,
-          cpf: foundRaw.CPF,
-          status: foundRaw.Status,
-          avatar: foundRaw.Avatar
-        };
+        const found = foundRaw; 
 
-        if (loginTab === 'admin' && !['admin', 'superadmin', 'Administrador do Sistema'].includes(found.role)) {
+        // Aceita diferentes nomes de cargos para admin
+        const isAdmin = ['admin', 'superadmin', 'Administrador do Sistema', 'Desenvolvedor Geral'].includes(found.role);
+
+        if (loginTab === 'admin' && !isAdmin) {
           setError('Este usuário não possui privilégios administrativos.');
           await recordLog(found.name, 'Gestão', 'erro', 'Tentativa de acesso admin sem privilégio');
           return;

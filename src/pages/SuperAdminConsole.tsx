@@ -25,7 +25,8 @@ import {
   Loader2,
   FileUp,
   History,
-  Lock
+  Lock,
+  Save
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
@@ -49,6 +50,8 @@ export default function SuperAdminConsole() {
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [syncLogs, setSyncLogs] = useState<{ type: 'info' | 'error' | 'success', msg: string }[]>([]);
   const [storageStats, setStorageStats] = useState({ usedRecords: 0, percent: 0, text: 'Conectando...' });
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasMenuChanges, setHasMenuChanges] = useState(false);
   const [menuPermissions, setMenuPermissions] = useState(() => {
     try {
       const saved = localStorage.getItem('menu_permissions_v1');
@@ -80,7 +83,16 @@ export default function SuperAdminConsole() {
       newPerms[role] = [...newPerms[role], path];
     }
     setMenuPermissions(newPerms);
-    localStorage.setItem('menu_permissions_v1', JSON.stringify(newPerms));
+    setHasMenuChanges(true);
+  };
+
+  const handleSavePermissions = () => {
+    setIsSaving(true);
+    localStorage.setItem('menu_permissions_v1', JSON.stringify(menuPermissions));
+    setTimeout(() => {
+      setIsSaving(false);
+      setHasMenuChanges(false);
+    }, 800);
   };
 
 
@@ -100,17 +112,17 @@ export default function SuperAdminConsole() {
 
   const fetchEmployees = async () => {
     const { data, error } = await supabase
-      .from('Funcionários')
+      .from('employees')
       .select('*')
-      .order('Nome');
+      .order('name');
     if (data) {
       const mapped = data.map((emp: any) => ({
         id: emp.id,
-        name: emp.Nome,
-        cpf: emp.CPF,
-        role: emp.Função,
-        status: emp.Status,
-        avatar: emp.Avatar
+        name: emp.name,
+        cpf: emp.cpf,
+        role: emp.role,
+        status: emp.status,
+        avatar: emp.avatar
       }));
       setEmployees(mapped);
     }
@@ -118,7 +130,7 @@ export default function SuperAdminConsole() {
 
   const calculateStorageUsage = async () => {
     try {
-      const { count: empCount } = await supabase.from('Funcionários').select('*', { count: 'exact', head: true });
+      const { count: empCount } = await supabase.from('employees').select('*', { count: 'exact', head: true });
       const { count: logCount } = await supabase.from('access_logs').select('*', { count: 'exact', head: true });
       const total = (empCount || 0) + (logCount || 0);
       const percent = Math.min((total / 10000) * 100, 100);
@@ -135,8 +147,8 @@ export default function SuperAdminConsole() {
   const toggleAdminPrivilege = async (emp: Employee) => {
     const newRole = emp.role === 'admin' ? 'user' : 'admin';
     const { error } = await supabase
-      .from('Funcionários')
-      .update({ Função: newRole })
+      .from('employees')
+      .update({ role: newRole })
       .eq('id', emp.id);
 
     if (error) {
@@ -150,8 +162,8 @@ export default function SuperAdminConsole() {
     try {
       setLoading(true);
       const [empRes, docRes, logRes] = await Promise.all([
-        supabase.from('Funcionários').select('*'),
-        supabase.from('Documentos').select('*'),
+        supabase.from('employees').select('*'),
+        supabase.from('documents').select('*'),
         supabase.from('access_logs').select('*')
       ]);
 
@@ -200,13 +212,13 @@ export default function SuperAdminConsole() {
 
           // Restaurar Funcionários
           if (content.employees.length > 0) {
-            const { error: err1 } = await supabase.from('Funcionários').upsert(content.employees);
+            const { error: err1 } = await supabase.from('employees').upsert(content.employees);
             if (err1) throw new Error('Erro ao restaurar funcionários: ' + err1.message);
           }
 
           // Restaurar Documentos
           if (content.documents.length > 0) {
-            const { error: err2 } = await supabase.from('Documentos').upsert(content.documents);
+            const { error: err2 } = await supabase.from('documents').upsert(content.documents);
             if (err2) throw new Error('Erro ao restaurar documentos: ' + err2.message);
           }
 
@@ -231,10 +243,31 @@ export default function SuperAdminConsole() {
   };
 
   const handleResetSystem = () => {
-    if (confirm('ATENÇÃO: Isso apagará TODOS os dados locais. Deseja continuar?')) {
+    if (confirm('ATENÇÃO: Isso apagará TODOS os dados locais (cache). Deseja continuar?')) {
       localStorage.clear();
       alert('Sistema resetado. Voltando ao login.');
       window.location.href = '/login';
+    }
+  };
+
+  const handleResetCloudDocuments = async () => {
+    if (!confirm('PERIGO: Isso apagará TODOS os registros de documentos da nuvem. Os funcionários permanecerão, mas os holerites sumirão do portal. Confirmar?')) return;
+    
+    try {
+      setLoading(true);
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .neq('id', 0); // Deleta todos
+
+      if (error) throw error;
+      
+      alert('Banco de dados de documentos zerado com sucesso! Agora você pode sincronizar tudo novamente.');
+      calculateStorageUsage();
+    } catch (err: any) {
+      alert('Erro ao zerar documentos: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -312,12 +345,12 @@ export default function SuperAdminConsole() {
         }
 
         const { error: dbErr } = await supabase
-          .from('Documentos')
+          .from('documents')
           .upsert({
             owner_cpf: employee.cpf,
-            Ano: item.year,
-            mês: item.month,
-            "Nome do arquivo": cleanFileName,
+            year: item.year,
+            month: item.month,
+            filename: cleanFileName,
             file_path: cloudPath
           });
 
@@ -451,6 +484,14 @@ export default function SuperAdminConsole() {
               <Trash2 className="w-3.5 h-3.5" />
               Limpar Cache Local
             </button>
+
+            <button 
+              onClick={handleResetCloudDocuments}
+              className="w-full py-3 bg-red-600 text-white rounded-xl text-xs font-bold hover:bg-red-700 transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-500/20"
+            >
+              <Database className="w-3.5 h-3.5" />
+              Zerar Documentos Cloud
+            </button>
           </div>
         </section>
 
@@ -516,9 +557,27 @@ export default function SuperAdminConsole() {
 
         {/* Visibilidade de Menus */}
         <section className="bg-white rounded-3xl p-8 shadow-sm border border-surface-container-high md:col-span-3 space-y-6">
-          <div className="flex items-center gap-3 border-b border-surface-container-high pb-4">
-            <Settings className="w-5 h-5 text-primary" />
-            <h3 className="text-xl font-bold text-on-surface">Visibilidade de Menus por Nível</h3>
+          <div className="flex items-center justify-between border-b border-surface-container-high pb-4">
+            <div className="flex items-center gap-3">
+              <Settings className="w-5 h-5 text-primary" />
+              <h3 className="text-xl font-bold text-on-surface">Visibilidade de Menus por Nível</h3>
+            </div>
+            {hasMenuChanges && (
+              <button 
+                onClick={handleSavePermissions}
+                disabled={isSaving}
+                className="bg-primary text-white px-5 py-2 rounded-xl text-xs font-bold hover:scale-105 active:scale-95 transition-all shadow-lg shadow-primary/20 flex items-center gap-2"
+              >
+                {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <Save className="w-3 h-3" />}
+                {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+              </button>
+            )}
+            {!hasMenuChanges && (
+               <div className="flex items-center gap-2 text-green-600 font-bold text-[10px] uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full border border-green-100">
+                  <Check className="w-3 h-3" />
+                  Sincronizado
+               </div>
+            )}
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

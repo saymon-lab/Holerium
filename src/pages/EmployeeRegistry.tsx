@@ -74,22 +74,12 @@ export default function EmployeeRegistry() {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('Funcionários')
+        .from('employees')
         .select('*')
-        .order('Nome');
-      
+        .order('name');
+        
       if (error) throw error;
-      
-      // Mapeia para o formato interno do app
-      const mappedData = (data || []).map(emp => ({
-        id: emp.id,
-        name: emp.Nome,
-        role: emp.Função,
-        cpf: emp.CPF,
-        status: emp.Status,
-        avatar: emp.Avatar
-      }));
-      setEmployeesList(mappedData);
+      setEmployeesList(data || []);
     } catch (err) {
       console.error('Erro ao buscar funcionários:', err);
     } finally {
@@ -184,26 +174,30 @@ export default function EmployeeRegistry() {
         name = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         cpf = cpf.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-        const cleanCpf = cpf.replace(/\D/g, '');
-        const existsLocally = employeesList.some(e => e.cpf.replace(/\D/g, '') === cleanCpf);
+        // Verifica se já foi adicionado neste mesmo lote (no arquivo CSV)
+        const existsInBatch = employeesToInsert.some(e => e.cpf.replace(/\D/g, '') === cleanCpf);
 
-        if (name && cpf && !existsLocally) {
+        if (name && cpf && !existsInBatch) {
           employeesToInsert.push({
-            Nome: name,
-            CPF: cpf,
-            Função: 'Colaborador',
-            Status: 'Ativo',
-            Avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+            name: name,
+            cpf: cpf, 
+            role: 'Colaborador',
+            status: 'Ativo',
+            avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
           });
           addedCount++;
         }
       }
 
       if (employeesToInsert.length > 0) {
-        const { error } = await supabase.from('Funcionários').insert(employeesToInsert);
+        // Usamos upsert para que CPFs existentes sejam atualizados em vez de dar erro
+        const { error } = await supabase
+          .from('employees')
+          .upsert(employeesToInsert, { onConflict: 'cpf' });
+          
         if (error) {
           console.error('Erro ao importar CSV para o servidor:', error);
-          alert('Erro ao salvar no banco de dados. Verifique CPFs duplicados.');
+          alert('Erro ao salvar no banco de dados: ' + error.message);
         } else {
           fetchEmployees();
           logs.unshift({

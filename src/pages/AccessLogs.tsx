@@ -45,16 +45,7 @@ export default function AccessLogs() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      
-      const mappedLogs = (data || []).map((log: any) => ({
-        id: log.id,
-        user: log.Usuário,
-        role: log.Função,
-        status: log.Status,
-        detail: log.Detalhe,
-        created_at: log.created_at
-      }));
-      setLogs(mappedLogs);
+      setLogs(data || []);
     } catch (err) {
       console.error('Erro ao buscar logs:', err);
     } finally {
