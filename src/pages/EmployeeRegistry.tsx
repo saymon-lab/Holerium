@@ -264,13 +264,20 @@ export default function EmployeeRegistry() {
         const file = await item.handle.getFile();
         const fileName = item.handle.name;
         
-        const cleanName = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-        const cleanCpf = fileName.replace(/\D/g, '');
+        const currentFileName = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+        const baseFileName = currentFileName.replace(/\.PDF$/, '').replace(/^[0-9.]+\s*/, '').trim();
+        const cleanCpfFromFileName = fileName.replace(/\D/g, '');
         
         const employee = employeesList.find(emp => {
-          const empCleanCpf = emp.cpf.replace(/\D/g, '');
-          const empCleanName = emp.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-          return empCleanCpf === cleanCpf || cleanName.includes(empCleanName) || empCleanName.includes(cleanName.replace('.PDF', ''));
+          const empCleanCpf = (emp.cpf || '').replace(/\D/g, '');
+          const empCleanName = (emp.name || '').normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+          
+          if (!empCleanName || !empCleanCpf) return false;
+
+          return (cleanCpfFromFileName.includes(empCleanCpf) && empCleanCpf.length >= 11) || 
+                 currentFileName.includes(empCleanName) || 
+                 empCleanName.includes(baseFileName) ||
+                 baseFileName.includes(empCleanName);
         });
 
         if (!employee) {
@@ -278,8 +285,8 @@ export default function EmployeeRegistry() {
           continue;
         }
 
-        const cleanFileName = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const cloudPath = `${employee.cpf}/${item.year}/${item.month}/${cleanFileName}`;
+        const normalizedFileName = fileName.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const cloudPath = `${employee.cpf}/${item.year}/${item.month}/${normalizedFileName}`;
         
         const { error: storageErr } = await supabase.storage
           .from('receipts')
@@ -291,12 +298,12 @@ export default function EmployeeRegistry() {
         }
 
         const { error: dbErr } = await supabase
-          .from('Documentos')
+          .from('documents')
           .upsert({
             owner_cpf: employee.cpf,
-            Ano: item.year,
-            mês: item.month,
-            "Nome do arquivo": cleanFileName,
+            year: item.year,
+            month: item.month,
+            filename: cleanFileName,
             file_path: cloudPath
           });
 
