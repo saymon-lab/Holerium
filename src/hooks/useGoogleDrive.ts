@@ -48,7 +48,7 @@ export function useGoogleDrive() {
     return new Promise((resolve, reject) => {
       const google = (window as any).google;
       if (!google || !google.accounts) {
-        return reject("Bibliotecas do Google não carregadas. Tente atualizar a página (F5).");
+        return reject("Bibliotecas de login do Google não foram carregadas corretamente.");
       }
 
       try {
@@ -58,7 +58,7 @@ export function useGoogleDrive() {
           callback: (response: any) => {
             if (response.error) {
               console.error("Erro OAuth:", response.error);
-              return reject(response.error);
+              return reject(`Erro de Autorização: ${response.error_description || response.error}`);
             }
             console.log("OAuth Token recebido.");
             setAccessToken(response.access_token);
@@ -66,10 +66,10 @@ export function useGoogleDrive() {
           },
         });
 
-        tokenClient.requestAccessToken();
-      } catch (err) {
+        tokenClient.requestAccessToken({ prompt: 'consent' });
+      } catch (err: any) {
         console.error("Erro ao iniciar Token Client:", err);
-        reject(err);
+        reject(`Falha interna ao abrir login: ${err.message || err}`);
       }
     });
   };

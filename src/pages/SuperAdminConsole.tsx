@@ -123,7 +123,7 @@ export default function SuperAdminConsole() {
       addLog('info', 'Iniciando autenticação com Google...');
       
       const token = await authenticate();
-      addLog('success', 'Autenticado com sucesso!');
+      addLog('success', 'Google: Autenticado com sucesso!');
       
       addLog('info', 'Por favor, selecione a pasta raiz dos recibos no Google Drive...');
       const pickedDocs = await showPicker(token);
@@ -848,30 +848,35 @@ export default function SuperAdminConsole() {
                         O sistema busca pastas no formato "MM-AAAA" e arquivos que contenham o nome ou CPF do funcionário.
                     </p>
                 </div>
-                {isDeveloper && (
-                  <button
-                      disabled={isSyncing || !isReady}
-                      onClick={handleGoogleDriveSync}
-                      className={cn(
-                        "w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 disabled:opacity-50 mb-3 border-2",
-                        !isReady 
-                          ? "bg-surface-container-low text-secondary-variant border-surface-container-high cursor-wait" 
-                          : "bg-white text-secondary border-surface-container-high hover:bg-surface-container-low active:scale-95"
-                      )}
-                  >
-                      {isReady ? (
-                        <>
-                          <Chrome className="w-5 h-5 text-primary" />
-                          Sincronizar via Google Drive
-                        </>
-                      ) : (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin text-secondary-variant" />
-                          Carregando Google...
-                        </>
-                      )}
-                  </button>
-                )}
+                  <div className="space-y-2">
+                    <button
+                        disabled={isSyncing}
+                        onClick={handleGoogleDriveSync}
+                        className={cn(
+                          "w-full py-4 rounded-2xl font-bold transition-all flex items-center justify-center gap-3 disabled:opacity-50 border-2",
+                          !isReady 
+                            ? "bg-surface-container-low text-secondary-variant border-surface-container-high cursor-wait" 
+                            : "bg-white text-secondary border-secondary/20 hover:bg-surface-container-low active:scale-95 shadow-sm"
+                        )}
+                    >
+                        {isReady ? (
+                          <>
+                            <Chrome className="w-5 h-5 text-primary" />
+                            Sincronizar via Google Drive
+                          </>
+                        ) : (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin text-secondary-variant" />
+                            Iniciando conexão Google...
+                          </>
+                        )}
+                    </button>
+                    {!isReady && (
+                      <p className="text-[10px] text-center text-secondary animate-pulse">
+                        Verifique sua conexão ou se há bloqueio de popups
+                      </p>
+                    )}
+                  </div>
 
                 <button
                     disabled={isSyncing}
