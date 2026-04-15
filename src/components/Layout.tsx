@@ -16,7 +16,7 @@ export default function Layout() {
           <Outlet />
         </main>
         <footer className="py-8 px-12 text-center text-xs text-secondary/50 uppercase tracking-widest font-bold mt-auto">
-          © 2026 • Holerium
+          © {new Date().getFullYear()} • Holerium
         </footer>
         <ContactButton />
       </div>

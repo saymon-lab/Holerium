@@ -26,6 +26,8 @@ export default function Dashboard() {
     navigate('/documents');
   };
 
+  const currentYear = new Date().getFullYear().toString();
+
   return (
     <div className="p-8 lg:p-12 flex-1 flex flex-col gap-10 animate-fade-in overflow-y-auto bg-white">
       {/* Page Header */}
@@ -35,10 +37,10 @@ export default function Dashboard() {
           Acesse seu histórico completo de demonstrativos de pagamento, informes de rendimentos e relatórios anuais de forma segura.
         </p>
       </div>
-
+ 
       {/* Years Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Active Year Card - 2026 */}
+        {/* Active Year Card - Dynamic */}
         <motion.div 
           whileHover={{ y: -4 }}
           className="lg:col-span-8 bg-[#EBEBEB] rounded-[2.5rem] p-10 relative overflow-hidden group border border-slate-200 min-h-[420px] flex flex-col justify-between shadow-sm"
@@ -54,7 +56,7 @@ export default function Dashboard() {
               </div>
             </div>
             
-            <h2 className="text-7xl font-black text-[#0B1F5B] mb-4 font-headline tracking-tighter">Ano 2026</h2>
+            <h2 className="text-7xl font-black text-[#0B1F5B] mb-4 font-headline tracking-tighter">Ano {currentYear}</h2>
             <p className="text-slate-600 font-bold max-w-md text-lg">
               Documentação ativa do exercício fiscal atual.
             </p>
@@ -62,7 +64,7 @@ export default function Dashboard() {
 
           <div className="relative z-10 flex items-center gap-8">
             <button 
-               onClick={() => handleOpenYear('2026')}
+               onClick={() => handleOpenYear(currentYear)}
                className="bg-[#0B1F5B] text-white px-10 py-5 rounded-full font-bold flex items-center gap-3 hover:scale-105 transition-all shadow-xl shadow-[#0B1F5B]/30 group"
             >
               <span>Abrir Pasta</span>

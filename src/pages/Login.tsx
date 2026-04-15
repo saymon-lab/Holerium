@@ -368,7 +368,7 @@ export default function Login() {
             <div className="mt-12 pt-8 border-t border-surface-container text-center">
               <p className="text-[10px] text-secondary font-semibold uppercase tracking-widest leading-relaxed">
                 Ambiente criptografado de ponta a ponta. 
-                <br />© 2026 • Holerium Corporativo
+                <br />© {new Date().getFullYear()} • Holerium Corporativo
               </p>
             </div>
           </div>
