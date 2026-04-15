@@ -84,13 +84,24 @@ serve(async (req) => {
 
       let month = "00";
       let year = "0000";
+      const folderUpper = folder.name.toUpperCase();
       const match = folder.name.match(/(\d{2})[-/](\d{4})/);
+      
       if (match) {
         month = match[1];
         year = match[2];
+      } else if (folderUpper.includes('FERIAS')) {
+        month = '15';
+        year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
+      } else if (folderUpper.includes('13') && (folderUpper.includes('1ª') || folderUpper.includes('1A'))) {
+        month = '13';
+        year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
+      } else if (folderUpper.includes('13') && (folderUpper.includes('2ª') || folderUpper.includes('2A'))) {
+        month = '14';
+        year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
       } else {
         year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
-        month = folder.name.toUpperCase().includes('FERIAS') ? '14' : '13';
+        month = "01"; // Fallback
       }
 
       console.log(`Sincronizando: ${folder.name}`);
