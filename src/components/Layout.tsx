@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Outlet } from 'react-router-dom';
+import { cn } from '@/src/lib/utils';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
 import ContactButton from './ContactButton';
