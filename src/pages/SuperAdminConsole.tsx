@@ -793,30 +793,6 @@ export default function SuperAdminConsole() {
               Recalibrar Espaço (Sync DB)
             </button>
 
-            <button 
-              onClick={async () => {
-                if (!confirm('Deseja apagar TODOS os registros de Abril/2026? Isso limpará os arquivos que entraram com a data errada.')) return;
-                try {
-                  setLoading(true);
-                  const { error } = await supabase
-                    .from('documents')
-                    .delete()
-                    .in('month', ['04', '15'])
-                    .eq('year', '2026');
-                  if (error) throw error;
-                  alert('Registros de 04/2026 apagados com sucesso!');
-                  calculateStorageUsage();
-                } catch (err: any) {
-                  alert('Erro ao apagar: ' + err.message);
-                } finally {
-                  setLoading(false);
-                }
-              }}
-              disabled={loading}
-              className="w-full py-3 bg-orange-50 text-orange-700 rounded-xl text-xs font-bold hover:bg-orange-100 transition-all flex items-center justify-center gap-2 border border-orange-200"
-            >
-              <X className="w-3.5 h-3.5" />
-              Limpar Erro (04/2026)
             </button>
           </div>
         </section>
