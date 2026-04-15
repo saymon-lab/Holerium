@@ -792,8 +792,6 @@ export default function SuperAdminConsole() {
               <RefreshCcw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
               Recalibrar Espaço (Sync DB)
             </button>
-
-            </button>
           </div>
         </section>
 
