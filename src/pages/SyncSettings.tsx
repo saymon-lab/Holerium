@@ -36,22 +36,55 @@ export default function SyncSettings() {
     }
   };
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64string = event.target?.result as string;
-      
-      const updatedUser = { ...currentUser, avatar: base64string };
+    // Limite de 300 KB (300 * 1024 bytes)
+    const MAX_SIZE = 300 * 1024;
+    if (file.size > MAX_SIZE) {
+      alert(`A imagem é muito grande (${(file.size / 1024).toFixed(1)} KB). Por favor, selecione uma imagem de até 300 KB para economizar espaço no servidor.`);
+      return;
+    }
+
+    try {
+      // 1. Upload para o Supabase Storage (Pasta avatars/)
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${currentUser.cpf || 'unknown'}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('receipts')
+        .upload(filePath, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      // 2. Obter a URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('receipts')
+        .getPublicUrl(filePath);
+
+      // 3. Atualizar no banco de dados (tabela employees)
+      const { error: dbError } = await supabase
+        .from('employees')
+        .update({ avatar: publicUrl })
+        .eq('cpf', currentUser.cpf);
+
+      if (dbError) throw dbError;
+
+      // 4. Atualizar LocalStorage e Estado
+      const updatedUser = { ...currentUser, avatar: publicUrl };
       setCurrentUser(updatedUser);
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
 
-      // Reload so the Sidebar catches the new image
-      setTimeout(() => window.location.reload(), 100);
-    };
-    reader.readAsDataURL(file);
+      alert('Foto de perfil atualizada com sucesso!');
+      
+      // Pequeno delay antes do reload para garantir a escrita no Storage
+      setTimeout(() => window.location.reload(), 500);
+    } catch (err: any) {
+      console.error('Erro ao atualizar avatar:', err);
+      alert('Erro ao salvar foto: ' + (err.message || 'Erro desconhecido'));
+    }
   };
 
   const isColaborador = currentUser.role !== 'Administrador do Sistema';
