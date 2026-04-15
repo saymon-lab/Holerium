@@ -54,6 +54,7 @@ export default function SuperAdminConsole() {
   const [storageStats, setStorageStats] = useState({ usedRecords: 0, percent: 0, text: 'Conectando...' });
   const [isSaving, setIsSaving] = useState(false);
   const [hasMenuChanges, setHasMenuChanges] = useState(false);
+  const [syncReferenceYear, setSyncReferenceYear] = useState(new Date().getFullYear().toString());
   const [menuPermissions, setMenuPermissions] = useState(() => {
     try {
       const saved = localStorage.getItem('menu_permissions_v1');
@@ -160,7 +161,7 @@ export default function SuperAdminConsole() {
         // Determinar Ano/Mês a partir do nome da pasta selecionada (ex: "01-2026")
         // Suporte para Férias e 13º com normalização de acentos
         let month = (new Date().getMonth() + 1).toString().padStart(2, '0');
-        let year = new Date().getFullYear().toString();
+        let year = syncReferenceYear; // Usa o ano de referência do painel como fallback principal
         
         const normalize = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
         const folderNorm = normalize(folderName);
@@ -525,7 +526,7 @@ export default function SuperAdminConsole() {
             await scan(entry, `${currentPath}${entry.name}/`);
           } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
             const pathParts = currentPath.split('/').filter(Boolean);
-            let year = '2024';
+            let year = syncReferenceYear; // Fallback principal para anos base
             let month = '01';
             const normalize = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
             const folderNorm = normalize(entry.name);
@@ -800,7 +801,7 @@ export default function SuperAdminConsole() {
                   const { error } = await supabase
                     .from('documents')
                     .delete()
-                    .eq('month', '04')
+                    .in('month', ['04', '15'])
                     .eq('year', '2026');
                   if (error) throw error;
                   alert('Registros de 04/2026 apagados com sucesso!');
@@ -989,7 +990,21 @@ export default function SuperAdminConsole() {
                         O sistema busca pastas no formato "MM-AAAA" e arquivos que contenham o nome ou CPF do funcionário.
                     </p>
                 </div>
-                  <div className="space-y-2">
+                  <div className="space-y-4">
+                    <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                      <label className="text-[10px] font-bold text-primary uppercase tracking-widest block mb-2">Ano de Referência (Obrigatório p/ Férias/13º)</label>
+                      <input 
+                        type="number" 
+                        value={syncReferenceYear}
+                        onChange={(e) => setSyncReferenceYear(e.target.value)}
+                        className="w-full px-4 py-2 rounded-xl border border-primary/20 bg-white text-sm font-bold focus:ring-2 focus:ring-primary/20 outline-none"
+                        placeholder="Ex: 2025"
+                      />
+                      <p className="text-[9px] text-secondary mt-2 leading-tight">
+                        Se o robô não encontrar o ano escrito na pasta, ele usará este valor.
+                      </p>
+                    </div>
+
                     <button
                         disabled={isSyncing}
                         onClick={handleGoogleDriveSync}
