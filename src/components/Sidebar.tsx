@@ -157,8 +157,8 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </nav>
 
         <div className="mt-auto px-4 pt-8">
-          <NavLink
-            to="/login"
+          <button
+            type="button"
             onClick={() => {
               localStorage.removeItem('currentUser');
               sessionStorage.removeItem('doc_viewState');
