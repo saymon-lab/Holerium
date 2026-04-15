@@ -16,6 +16,7 @@ import { supabase } from '@/src/lib/supabase';
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
+  isCollapsed?: boolean;
 }
 
 const navItems = [
@@ -100,12 +101,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       />
 
       <aside className={cn(
-        "h-screen w-72 fixed left-0 top-0 bg-[#0B1F5B] border-r border-white/5 flex-col py-8 px-4 gap-2 z-50 transition-transform duration-300 lg:translate-x-0 lg:flex shadow-2xl",
-        isOpen ? "translate-x-0" : "-translate-x-full"
+        "h-screen fixed left-0 top-0 bg-[#0B1F5B] border-r border-white/5 flex-col py-8 px-4 gap-2 z-50 transition-all duration-300 lg:translate-x-0 lg:flex shadow-2xl overflow-hidden",
+        isOpen ? "translate-x-0" : "-translate-x-full",
+        isCollapsed ? "lg:w-20" : "lg:w-72"
       )}>
-        <div className="flex items-center justify-between mb-10 px-4">
+        <div className={cn(
+          "flex items-center mb-10 transition-all duration-300",
+          isCollapsed ? "justify-center px-0" : "justify-between px-4"
+        )}>
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 ring-2 ring-primary/5 flex-shrink-0 aspect-square">
+            <div className={cn(
+              "rounded-full overflow-hidden bg-white/10 ring-2 ring-white/10 flex-shrink-0 aspect-square transition-all duration-300",
+              isCollapsed ? "w-10 h-10" : "w-12 h-12"
+            )}>
               <img
                 src={userAvatar}
                 alt={userName}
@@ -113,16 +121,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                 referrerPolicy="no-referrer"
               />
             </div>
-            <div>
-              <div className="text-white font-bold text-sm leading-tight tracking-tight">{userName}</div>
-              <div className="text-white/40 text-[10px] mt-0.5 font-medium uppercase tracking-widest">
-                {userIsSuper ? 'Desenvolvedor' : userIsAdmin ? 'Admin' : 'Colaborador'}
-              </div>
-            </div>
+            {!isCollapsed && (
+              <motion.div 
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="bg-white/5 p-3 rounded-2xl border border-white/5 min-w-[160px]"
+              >
+                <div className="text-white font-black text-xs leading-tight tracking-tight truncate w-full">{userName}</div>
+                <div className="text-[#E9C176] text-[8px] mt-1 font-black uppercase tracking-widest bg-[#E9C176]/10 inline-block px-2 py-0.5 rounded-full">
+                  {userIsSuper ? 'Desenvolvedor' : userIsAdmin ? 'Admin' : 'Colaborador'}
+                </div>
+              </motion.div>
+            )}
           </div>
-          <button onClick={onClose} className="lg:hidden p-2 text-white/40 hover:text-white transition-colors">
-            <X className="w-5 h-5" />
-          </button>
+          {!isCollapsed && (
+            <button onClick={onClose} className="lg:hidden p-2 text-white/40 hover:text-white transition-colors">
+              <X className="w-5 h-5" />
+            </button>
+          )}
         </div>
 
         <nav className="flex flex-col gap-1">
@@ -145,12 +161,21 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClose();
                 }}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-white/60 hover:bg-white/5 hover:text-white w-full text-left",
-                  isActive && "text-[#E9C176] font-bold border-r-[4px] border-[#E9C176] bg-white/5 shadow-sm shadow-black/20"
+                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-white/60 hover:bg-white/5 hover:text-white w-full text-left overflow-hidden",
+                  isActive && "text-[#E9C176] font-bold border-r-[4px] border-[#E9C176] bg-white/5 shadow-sm shadow-black/20",
+                  isCollapsed && "justify-center px-0 gap-0"
                 )}
               >
-                <item.icon className={cn("w-5 h-5", isActive ? "text-[#E9C176]" : "text-white/40")} />
-                <span className="text-sm font-semibold">{item.label}</span>
+                <item.icon className={cn("w-5 h-5 flex-shrink-0 transition-transform", isActive ? "text-[#E9C176]" : "text-white/40", !isActive && "group-hover:scale-110")} />
+                {!isCollapsed && (
+                  <motion.span 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="text-sm font-semibold whitespace-nowrap"
+                  >
+                    {item.label}
+                  </motion.span>
+                )}
               </button>
             );
           })}
@@ -167,18 +192,30 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               onClose();
               navigate('/login');
             }}
-            className="flex mb-4 items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-red-400 hover:bg-red-500/10 w-full"
+            className={cn(
+              "flex mb-4 items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-red-400 hover:bg-red-500/10 w-full",
+              isCollapsed && "justify-center px-0 gap-0"
+            )}
           >
-            <LogOut className="w-5 h-5" />
-            <span className="text-sm font-medium">Sair</span>
+            <LogOut className="w-5 h-5 flex-shrink-0" />
+            {!isCollapsed && <span className="text-sm font-medium">Sair</span>}
           </button>
 
-          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-            <p className="text-[10px] font-bold text-[#E9C176] mb-1 uppercase tracking-widest">Status do Sistema</p>
-            <div className="flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-              <p className="text-[10px] text-white/50 font-bold uppercase tracking-tight">Serviço Ativo</p>
-            </div>
+          <div className={cn(
+            "p-4 rounded-xl bg-white/5 border border-white/5 transition-all duration-300",
+            isCollapsed && "px-2 py-4 flex flex-col items-center"
+          )}>
+            {!isCollapsed ? (
+              <>
+                <p className="text-[10px] font-bold text-[#E9C176] mb-1 uppercase tracking-widest">Status do Sistema</p>
+                <div className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                  <p className="text-[10px] text-white/50 font-bold uppercase tracking-tight">Serviço Ativo</p>
+                </div>
+              </>
+            ) : (
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse shadow-[0_0_8px_rgba(34,197,94,0.6)]" />
+            )}
           </div>
         </div>
       </aside>

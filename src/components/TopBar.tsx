@@ -4,6 +4,7 @@ import { cn } from '@/src/lib/utils';
 
 interface TopBarProps {
   onMenuClick: () => void;
+  onToggleSidebar?: () => void;
 }
 
 export default function TopBar({ onMenuClick }: TopBarProps) {
@@ -12,14 +13,22 @@ export default function TopBar({ onMenuClick }: TopBarProps) {
       <div className="flex items-center gap-4">
         <button 
           onClick={onMenuClick}
-          className="lg:hidden p-2 -ml-2 text-primary hover:bg-primary/5 rounded-xl transition-colors"
+          className="lg:hidden p-2 -ml-2 text-white hover:bg-white/10 rounded-xl transition-colors"
         >
           <Menu className="w-6 h-6" />
         </button>
+
+        {/* Desktop Toggle Button */}
+        <button 
+          onClick={onToggleSidebar}
+          className="hidden lg:flex p-2 -ml-2 text-white/60 hover:text-white hover:bg-white/10 rounded-xl transition-all active:scale-90"
+        >
+          <Menu className="w-5 h-5" />
+        </button>
         
         <svg width="220" height="60" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="scale-75 origin-left">
-          <rect x="0" y="0" width="48" height="48" rx="12" fill="url(#grad_top)" />
-          <path d="M14 14V34M34 14V34M14 24H34" stroke="white" stroke-width="3" stroke-linecap="round" />
+          <rect x="0" y="0" width="48" height="48" rx="12" fill="white" />
+          <path d="M14 14V34M34 14V34M14 24H34" stroke="#0B1F5B" stroke-width="4" stroke-linecap="round" />
           <text x="60" y="32" font-family="Poppins, Inter, sans-serif" font-size="22" font-weight="600" fill="white">
             Holerium
           </text>
