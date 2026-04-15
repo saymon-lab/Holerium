@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
   FileText, 
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
+import { supabase } from '@/src/lib/supabase';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -27,12 +28,39 @@ const navItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
-  const [currentUser] = useState(() => {
+  const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('currentUser');
       return saved ? JSON.parse(saved) : null;
     } catch { return null; }
   });
+
+  // Efeito para sincronizar dados do perfil (como a foto) em tempo real do servidor
+  useEffect(() => {
+    if (currentUser?.cpf) {
+      const syncProfile = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('employees')
+            .select('*')
+            .eq('cpf', currentUser.cpf)
+            .maybeSingle();
+            
+          if (data && !error) {
+            // Se houver diferença (ex: foto nova), atualiza estado e storage
+            if (data.avatar !== currentUser.avatar || data.role !== currentUser.role) {
+              const updatedUser = { ...currentUser, ...data };
+              setCurrentUser(updatedUser);
+              localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+            }
+          }
+        } catch (err) {
+          console.error("Erro ao sincronizar perfil:", err);
+        }
+      };
+      syncProfile();
+    }
+  }, [currentUser?.cpf]);
 
   const userName = currentUser?.name || 'Administrador';
   const userRole = currentUser?.role || 'user';
