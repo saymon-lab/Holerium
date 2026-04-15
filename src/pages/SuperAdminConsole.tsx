@@ -114,6 +114,11 @@ export default function SuperAdminConsole() {
     }
   }, []);
 
+  const addLog = (type: 'info' | 'error' | 'success' | 'update', msg: string) => {
+    const newLog = { type, msg };
+    setSyncLogs(prev => [newLog, ...prev.slice(0, 19)]);
+  };
+
   const handleGoogleDriveSync = async () => {
     if (isSyncing) return;
     
@@ -185,7 +190,7 @@ export default function SuperAdminConsole() {
         });
 
         if (!employee) {
-          addLog('error', `Não identificado: ${fileName}`);
+          addLogToHistory('error', `Não identificado: ${fileName}`);
           continue;
         }
 
@@ -471,15 +476,15 @@ export default function SuperAdminConsole() {
       // @ts-ignore
       const handle = await window.showDirectoryPicker({ mode: 'read' });
       setIsSyncing(true);
-      setSyncLogs([{ type: 'info', msg: `Iniciando varredura em: ${handle.name}...` }]);
+      addLog('info', `Iniciando varredura em: ${handle.name}...`);
       
       const filesToUpload: { handle: FileSystemFileHandle, path: string, year: string, month: string }[] = [];
-      const fullHistory: { type: 'info' | 'error' | 'success', msg: string }[] = [];
+      const fullHistory: { type: 'info' | 'error' | 'success' | 'update', msg: string }[] = [];
 
-      const addLog = (type: 'info' | 'error' | 'success', msg: string) => {
+      const addLogToHistory = (type: 'info' | 'error' | 'success' | 'update', msg: string) => {
         const newLog = { type, msg };
         fullHistory.push(newLog);
-        setSyncLogs(prev => [newLog, ...prev.slice(0, 19)]);
+        addLog(type, msg);
       };
       
       const scan = async (dirHandle: FileSystemDirectoryHandle, currentPath: string = '') => {
@@ -547,7 +552,7 @@ export default function SuperAdminConsole() {
         });
 
         if (!employee) {
-          addLog('error', `Não identificado: ${fileName}`);
+          addLogToHistory('error', `Não identificado: ${fileName}`);
           continue;
         }
 
@@ -559,7 +564,7 @@ export default function SuperAdminConsole() {
           .upload(cloudPath, file, { upsert: true });
 
         if (storageErr) {
-          addLog('error', `Erro Cloud: ${storageErr.message} (${normalizedFileName})`);
+          addLogToHistory('error', `Erro Cloud: ${storageErr.message} (${normalizedFileName})`);
           continue;
         }
 
@@ -584,12 +589,12 @@ export default function SuperAdminConsole() {
           });
 
         if (dbErr) {
-          addLog('error', `Erro Banco: ${dbErr.message}`);
+          addLogToHistory('error', `Erro Banco: ${dbErr.message}`);
         } else {
           if (existingDoc) {
-            addLog('update', `Atualizado: ${employee.name} (${item.month}/${item.year})`);
+            addLogToHistory('update', `Atualizado: ${employee.name} (${item.month}/${item.year})`);
           } else {
-            addLog('success', `Sucesso: ${employee.name} (${item.month}/${item.year})`);
+            addLogToHistory('success', `Sucesso: ${employee.name} (${item.month}/${item.year})`);
           }
         }
 
