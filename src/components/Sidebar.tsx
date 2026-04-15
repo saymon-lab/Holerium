@@ -10,6 +10,7 @@ import {
   X
 } from 'lucide-react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 

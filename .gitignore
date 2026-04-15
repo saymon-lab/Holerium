@@ -8,3 +8,5 @@ coverage/
 !.env.example
 dados supabase.txt
 metadata.json
+
+.vercel
