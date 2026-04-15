@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard,
-  FileText, 
-  ShieldAlert, 
-  History, 
-  Settings, 
-  Shield, 
+  FileText,
+  ShieldAlert,
+  History,
+  Settings,
+  Shield,
   LogOut,
   X
 } from 'lucide-react';
@@ -45,7 +45,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
             .select('*')
             .eq('cpf', currentUser.cpf)
             .maybeSingle();
-            
+
           if (data && !error) {
             // Se houver diferença (ex: foto nova), atualiza estado e storage
             if (data.avatar !== currentUser.avatar || data.role !== currentUser.role) {
@@ -70,7 +70,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const visibleNavItems = navItems.filter(item => {
     if (userIsSuper) return true;
-    
+
     try {
       const permsSaved = localStorage.getItem('menu_permissions_v1');
       const perms = permsSaved ? JSON.parse(permsSaved) : {
@@ -89,7 +89,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   return (
     <>
       {/* Backdrop for mobile */}
-      <div 
+      <div
         className={cn(
           "fixed inset-0 bg-primary/20 backdrop-blur-sm z-40 transition-opacity lg:hidden",
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"

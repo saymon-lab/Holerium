@@ -158,13 +158,29 @@ export default function SuperAdminConsole() {
         const fileName = driveFile.name;
         
         // Determinar Ano/Mês a partir do nome da pasta selecionada (ex: "01-2026")
-        const folderMatch = folderName.match(/(\d{2})[-/](\d{4})/);
+        // Suporte para Férias e 13º
         let month = (new Date().getMonth() + 1).toString().padStart(2, '0');
         let year = new Date().getFullYear().toString();
         
-        if (folderMatch) {
-          month = folderMatch[1];
-          year = folderMatch[2];
+        const folderUpper = folderName.toUpperCase();
+        if (folderUpper.includes('FERIAS')) {
+          month = '15';
+          const yMatch = folderName.match(/(\d{4})/);
+          if (yMatch) year = yMatch[1];
+        } else if (folderUpper.includes('13') && (folderUpper.includes('1ª') || folderUpper.includes('1A'))) {
+          month = '13';
+          const yMatch = folderName.match(/(\d{4})/);
+          if (yMatch) year = yMatch[1];
+        } else if (folderUpper.includes('13') && (folderUpper.includes('2ª') || folderUpper.includes('2A'))) {
+          month = '14';
+          const yMatch = folderName.match(/(\d{4})/);
+          if (yMatch) year = yMatch[1];
+        } else {
+          const folderMatch = folderName.match(/(\d{2})[-/](\d{4})/);
+          if (folderMatch) {
+            month = folderMatch[1];
+            year = folderMatch[2];
+          }
         }
 
         const simplify = (text: string) => 
@@ -505,13 +521,30 @@ export default function SuperAdminConsole() {
             const pathParts = currentPath.split('/').filter(Boolean);
             let year = '2024';
             let month = '01';
-            const folderMatch = entry.name.match(/(\d{2})-(\d{4})/) || (pathParts.length > 0 ? pathParts[pathParts.length-1].match(/(\d{2})-(\d{4})/) : null);
-            if (folderMatch) {
-              month = folderMatch[1];
-              year = folderMatch[2];
-            } else if (pathParts.length > 0) {
-              const lastFolder = pathParts[pathParts.length-1];
-              if (/^\d{4}$/.test(lastFolder)) year = lastFolder;
+            const folderUpper = entry.name.toUpperCase();
+            const parentUpper = (pathParts.length > 0 ? pathParts[pathParts.length-1].toUpperCase() : '');
+            
+            if (folderUpper.includes('FERIAS') || parentUpper.includes('FERIAS')) {
+              month = '15';
+              const yMatch = entry.name.match(/(\d{4})/) || (pathParts.join('/').match(/(\d{4})/));
+              if (yMatch) year = yMatch[1];
+            } else if ((folderUpper.includes('13') || parentUpper.includes('13')) && (folderUpper.includes('1ª') || folderUpper.includes('1A') || parentUpper.includes('1ª') || parentUpper.includes('1A'))) {
+              month = '13';
+              const yMatch = entry.name.match(/(\d{4})/) || (pathParts.join('/').match(/(\d{4})/));
+              if (yMatch) year = yMatch[1];
+            } else if ((folderUpper.includes('13') || parentUpper.includes('13')) && (folderUpper.includes('2ª') || folderUpper.includes('2A') || parentUpper.includes('2ª') || parentUpper.includes('2A'))) {
+              month = '14';
+              const yMatch = entry.name.match(/(\d{4})/) || (pathParts.join('/').match(/(\d{4})/));
+              if (yMatch) year = yMatch[1];
+            } else {
+              const folderMatch = entry.name.match(/(\d{2})-(\d{4})/) || (pathParts.length > 0 ? pathParts[pathParts.length-1].match(/(\d{2})-(\d{4})/) : null);
+              if (folderMatch) {
+                month = folderMatch[1];
+                year = folderMatch[2];
+              } else if (pathParts.length > 0) {
+                const lastFolder = pathParts[pathParts.length-1];
+                if (/^\d{4}$/.test(lastFolder)) year = lastFolder;
+              }
             }
             filesToUpload.push({ handle: entry as FileSystemFileHandle, path: `${currentPath}${entry.name}`, year, month });
           }

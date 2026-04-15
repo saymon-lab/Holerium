@@ -46,7 +46,11 @@ export default function DocumentViewer() {
   const [availableMonths, setAvailableMonths] = useState<string[]>([]);
   const [cloudDocuments, setCloudDocuments] = useState<any[]>([]);
 
-  const months = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  const months = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
+    '13º Salário (1ª Parc.)', '13º Salário (2ª Parc.)', 'Férias'
+  ];
   const [years, setYears] = useState<string[]>([]);
 
   const userName = currentUser.name || "Usuário não identificado";
