@@ -221,7 +221,8 @@ export default function SuperAdminConsole() {
             year: year,
             month: month,
             filename: normalizedFileName,
-            file_path: cloudPath
+            file_path: cloudPath,
+            size: fileContent.size // Armazena o tamanho real do arquivo
           });
 
         if (dbErr) {
@@ -277,17 +278,64 @@ export default function SuperAdminConsole() {
 
   const calculateStorageUsage = async () => {
     try {
-      const { count: empCount } = await supabase.from('employees').select('*', { count: 'exact', head: true });
-      const { count: logCount } = await supabase.from('access_logs').select('*', { count: 'exact', head: true });
-      const total = (empCount || 0) + (logCount || 0);
-      const percent = Math.min((total / 10000) * 100, 100);
+      const { data: docs, error } = await supabase
+        .from('documents')
+        .select('size');
+      
+      if (error) throw error;
+
+      const totalSizeBytes = docs.reduce((acc, curr) => acc + (Number(curr.size) || 0), 0);
+      const totalMB = totalSizeBytes / (1024 * 1024);
+      const limitMB = 1024; // 1GB Free Plan
+      const percent = Math.min((totalMB / limitMB) * 100, 100);
+
       setStorageStats({ 
-        usedRecords: total, 
+        usedRecords: docs.length, 
         percent, 
-        text: `${total} registros no Supabase` 
+        text: `${totalMB.toFixed(2)} MB usados de 1.024 MB` 
       });
     } catch (err) {
+      console.error('Erro ao calcular ocupação:', err);
       setStorageStats({ usedRecords: 0, percent: 0, text: 'Erro ao calcular ocupação' });
+    }
+  };
+
+  const handleRecalculateSizes = async () => {
+    if (!confirm('Deseja recalcular o tamanho de todos os arquivos? Isso pode demorar alguns minutos se houver muitos PDFs.')) return;
+    
+    try {
+      setLoading(true);
+      const { data: docs, error } = await supabase
+        .from('documents')
+        .select('*');
+      
+      if (error) throw error;
+      if (!docs) return;
+
+      addLog('info', `Iniciando recalibragem de ${docs.length} arquivos...`);
+      let updatedCount = 0;
+
+      for (const doc of docs) {
+        // Se o tamanho for 0 ou nulo, tenta buscar no Storage
+        const { data: metadata, error: metaErr } = await supabase.storage
+          .from('receipts')
+          .getMetadata(doc.file_path);
+
+        if (metadata && metadata.size) {
+          await supabase
+            .from('documents')
+            .update({ size: metadata.size })
+            .eq('id', doc.id);
+          updatedCount++;
+        }
+      }
+
+      alert(`Recalibragem concluída! ${updatedCount} arquivos atualizados.`);
+      calculateStorageUsage();
+    } catch (err: any) {
+      alert('Erro ao recalcular: ' + err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -531,7 +579,8 @@ export default function SuperAdminConsole() {
             year: item.year,
             month: item.month,
             filename: normalizedFileName,
-            file_path: cloudPath
+            file_path: cloudPath,
+            size: file.size // Armazena o tamanho real do arquivo
           });
 
         if (dbErr) {
@@ -605,7 +654,7 @@ export default function SuperAdminConsole() {
                   <Check className="w-6 h-6" />
                </div>
                <div>
-                 <p className="text-xs font-bold text-secondary uppercase tracking-widest">Supabase Cloud</p>
+                 <p className="text-xs font-bold text-secondary uppercase tracking-widest">Supabase Cloud (1GB)</p>
                  <p className="font-bold text-on-surface">Conectado</p>
                </div>
             </div>
@@ -675,6 +724,15 @@ export default function SuperAdminConsole() {
             >
               <Database className="w-3.5 h-3.5" />
               Zerar Documentos Cloud
+            </button>
+
+            <button 
+              onClick={handleRecalculateSizes}
+              disabled={loading}
+              className="w-full py-3 bg-blue-50 text-blue-600 rounded-xl text-xs font-bold hover:bg-blue-100 transition-all flex items-center justify-center gap-2"
+            >
+              <RefreshCcw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
+              Recalibrar Espaço (Sync DB)
             </button>
           </div>
         </section>

@@ -314,8 +314,8 @@ export default function DocumentViewer() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="bg-white p-6 rounded-3xl border border-outline-variant/5 shadow-sm">
+      <div className="flex justify-center">
+        <div className="bg-white p-6 rounded-3xl border border-outline-variant/5 shadow-sm max-w-2xl w-full">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center text-primary">
               <ShieldCheck className="w-5 h-5" />
@@ -323,18 +323,6 @@ export default function DocumentViewer() {
             <h4 className="font-bold text-on-surface">Segurança Digital</h4>
           </div>
           <p className="text-sm text-on-surface-variant leading-relaxed">Documento hospedado de forma criptografada no Supabase Cloud.</p>
-        </div>
-        <div className="bg-white p-6 rounded-3xl border border-outline-variant/5 shadow-sm">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-full bg-primary-container flex items-center justify-center text-primary">
-              <Share2 className="w-5 h-5" />
-            </div>
-            <h4 className="font-bold text-on-surface">Compartilhar</h4>
-          </div>
-          <p className="text-sm text-on-surface-variant leading-relaxed">Libere o acesso temporário deste holerite via link seguro.</p>
-          <button className="mt-4 text-sm font-bold text-primary hover:underline flex items-center gap-1">
-            Solicitar Link <ExternalLink className="w-3 h-3" />
-          </button>
         </div>
       </div>
     </div>

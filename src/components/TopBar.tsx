@@ -6,15 +6,15 @@ export default function TopBar() {
     <header className="w-full sticky top-0 z-40 bg-slate-50/80 backdrop-blur-md flex justify-between items-center px-8 h-20">
       <div className="flex items-center">
         <svg width="220" height="60" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="scale-75 origin-left">
-          <rect x="0" y="0" width="48" height="48" rx="12" fill="url(#grad_top)"/>
-          <path d="M14 14V34M34 14V34M14 24H34" stroke="white" stroke-width="3" stroke-linecap="round"/>
+          <rect x="0" y="0" width="48" height="48" rx="12" fill="url(#grad_top)" />
+          <path d="M14 14V34M34 14V34M14 24H34" stroke="white" stroke-width="3" stroke-linecap="round" />
           <text x="60" y="32" font-family="Poppins, Inter, sans-serif" font-size="22" font-weight="600" fill="#0B1F5B" className="dark:fill-white">
             Holerium
           </text>
           <defs>
             <linearGradient id="grad_top" x1="0" y1="0" x2="48" y2="48">
-              <stop offset="0%" stop-color="#0B1F5B"/>
-              <stop offset="100%" stop-color="#2563EB"/>
+              <stop offset="0%" stop-color="#0B1F5B" />
+              <stop offset="100%" stop-color="#2563EB" />
             </linearGradient>
           </defs>
         </svg>
