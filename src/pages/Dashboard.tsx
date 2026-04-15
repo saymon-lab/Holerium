@@ -43,14 +43,14 @@ export default function Dashboard() {
         {/* Active Year Card - Dynamic */}
         <motion.div 
           whileHover={{ y: -4 }}
-          className="lg:col-span-8 bg-[#EBEBEB] rounded-[2.5rem] p-10 relative overflow-hidden group border border-slate-200 min-h-[420px] flex flex-col justify-between shadow-sm"
+          className="lg:col-span-8 bg-slate-50 rounded-[2.5rem] p-10 relative overflow-hidden group border border-slate-200 min-h-[420px] flex flex-col justify-between shadow-xl shadow-slate-200/50"
         >
           <div className="relative z-10">
             <div className="flex justify-between items-start mb-12">
               <div className="w-16 h-16 rounded-xl bg-[#0B1F5B] flex items-center justify-center shadow-lg shadow-[#0B1F5B]/20">
                 <Calendar className="w-8 h-8 text-white" />
               </div>
-              <div className="flex items-center gap-2 px-4 py-1.5 bg-slate-300/30 text-[#775a19] text-[10px] font-black uppercase tracking-widest rounded-full border border-slate-300/50">
+              <div className="flex items-center gap-2 px-4 py-1.5 bg-white text-[#775a19] text-[10px] font-black uppercase tracking-widest rounded-full border border-slate-200 shadow-sm">
                 <div className="w-1.5 h-1.5 rounded-full bg-[#E9C176]"></div>
                 <span>Arquivo Corrente</span>
               </div>

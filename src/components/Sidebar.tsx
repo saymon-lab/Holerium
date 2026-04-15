@@ -100,7 +100,7 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       />
 
       <aside className={cn(
-        "h-screen w-72 fixed left-0 top-0 bg-white border-r border-slate-100 flex-col py-8 px-4 gap-2 z-50 transition-transform duration-300 lg:translate-x-0 lg:flex",
+        "h-screen w-72 fixed left-0 top-0 bg-[#0B1F5B] border-r border-white/5 flex-col py-8 px-4 gap-2 z-50 transition-transform duration-300 lg:translate-x-0 lg:flex shadow-2xl",
         isOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="flex items-center justify-between mb-10 px-4">
@@ -114,13 +114,13 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               />
             </div>
             <div>
-              <div className="text-primary font-bold text-sm leading-tight tracking-tight">{userName}</div>
-              <div className="text-slate-400 text-[10px] mt-0.5 font-medium">
+              <div className="text-white font-bold text-sm leading-tight tracking-tight">{userName}</div>
+              <div className="text-white/40 text-[10px] mt-0.5 font-medium uppercase tracking-widest">
                 {userIsSuper ? 'Desenvolvedor' : userIsAdmin ? 'Admin' : 'Colaborador'}
               </div>
             </div>
           </div>
-          <button onClick={onClose} className="lg:hidden p-2 text-slate-400 hover:text-primary transition-colors">
+          <button onClick={onClose} className="lg:hidden p-2 text-white/40 hover:text-white transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -145,11 +145,11 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
                   onClose();
                 }}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-slate-500 hover:bg-slate-50 hover:text-primary w-full text-left",
-                  isActive && "text-primary font-bold border-r-[6px] border-[#E9C176] shadow-sm bg-white"
+                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-white/60 hover:bg-white/5 hover:text-white w-full text-left",
+                  isActive && "text-[#E9C176] font-bold border-r-[4px] border-[#E9C176] bg-white/5 shadow-sm shadow-black/20"
                 )}
               >
-                <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-slate-400")} />
+                <item.icon className={cn("w-5 h-5", isActive ? "text-[#E9C176]" : "text-white/40")} />
                 <span className="text-sm font-semibold">{item.label}</span>
               </button>
             );
@@ -165,18 +165,19 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               sessionStorage.removeItem('doc_selectedYear');
               sessionStorage.removeItem('doc_selectedMonth');
               onClose();
+              navigate('/login');
             }}
-            className="flex mb-4 items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
+            className="flex mb-4 items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-red-400 hover:bg-red-500/10 w-full"
           >
             <LogOut className="w-5 h-5" />
             <span className="text-sm font-medium">Sair</span>
-          </NavLink>
+          </button>
 
-          <div className="p-4 rounded-xl bg-surface-container-highest/50">
-            <p className="text-xs font-bold text-primary mb-1">Status do Sistema</p>
+          <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+            <p className="text-[10px] font-bold text-[#E9C176] mb-1 uppercase tracking-widest">Status do Sistema</p>
             <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></div>
-              <span className="text-[10px] text-secondary">Serviço Ativo</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+              <p className="text-[10px] text-white/50 font-bold uppercase tracking-tight">Serviço Ativo</p>
             </div>
           </div>
         </div>
