@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, BadgeAlert, FolderOpen, Save, ArrowLeft } from 'lucide-react';
+import { Camera, BadgeAlert, FolderOpen, Save, ArrowLeft, Fingerprint, Trash2 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
@@ -11,6 +11,7 @@ export default function SyncSettings() {
       return JSON.parse(localStorage.getItem('currentUser') || '{}');
     } catch { return {}; }
   });
+  const [isRegisteringBio, setIsRegisteringBio] = useState(false);
 
   const [folderPath, setFolderPath] = useState(() => {
     return localStorage.getItem('receiptsFolderPath') || 'Nenhuma pasta vinculada';
@@ -88,6 +89,87 @@ export default function SyncSettings() {
     }
   };
 
+  const registerBiometrics = async () => {
+    try {
+      if (!window.PublicKeyCredential) {
+        alert('Seu navegador não suporta biometria WebAuthn.');
+        return;
+      }
+
+      setIsRegisteringBio(true);
+
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      const creationOptions: PublicKeyCredentialCreationOptions = {
+        challenge,
+        rp: { name: "Holerium", id: window.location.hostname },
+        user: {
+          id: Uint8Array.from(currentUser.cpf.replace(/\D/g, ''), c => c.charCodeAt(0)),
+          name: currentUser.name,
+          displayName: currentUser.name,
+        },
+        pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
+        timeout: 60000,
+        attestation: "none",
+        authenticatorSelection: {
+           authenticatorAttachment: "platform",
+           userVerification: "required",
+           residentKey: "required"
+        }
+      };
+
+      const credential = await navigator.credentials.create({
+        publicKey: creationOptions
+      }) as PublicKeyCredential;
+
+      if (credential) {
+        const { error } = await supabase
+          .from('employees')
+          .update({ bio_id: credential.id })
+          .eq('cpf', currentUser.cpf);
+
+        if (error) throw error;
+        
+        // Atualiza localmente
+        const updatedUser = { ...currentUser, bio_id: credential.id };
+        setCurrentUser(updatedUser);
+        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+
+        alert('Biometria ativada com sucesso neste dispositivo!');
+      }
+    } catch (err: any) {
+      if (err.name !== 'NotAllowedError') { // Ignora se o usuário cancelar
+        console.error('Erro ao registrar biometria:', err);
+        alert('Falha ao ativar biometria: ' + err.message);
+      }
+    } finally {
+      setIsRegisteringBio(false);
+    }
+  };
+
+  const removeBiometrics = async () => {
+    if (!confirm('Deseja realmente remover o acesso biométrico deste dispositivo?')) return;
+    try {
+      setIsRegisteringBio(true);
+      const { error } = await supabase
+        .from('employees')
+        .update({ bio_id: null })
+        .eq('cpf', currentUser.cpf);
+
+      if (error) throw error;
+      
+      const updatedUser = { ...currentUser, bio_id: null };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      alert('Biometria removida.');
+    } catch (err: any) {
+      alert('Erro ao remover: ' + err.message);
+    } finally {
+      setIsRegisteringBio(false);
+    }
+  };
+
   const isColaborador = currentUser.role !== 'Administrador do Sistema';
 
   return (
@@ -152,6 +234,50 @@ export default function SyncSettings() {
           </div>
         )}
       </div>
+
+      {/* Seção de Biometria */}
+      <section className="bg-white rounded-3xl p-10 shadow-sm border border-surface-container-high space-y-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
+            <Fingerprint className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-on-surface">Acesso Biométrico</h3>
+            <p className="text-xs text-secondary font-medium">Use sua digital ou reconhecimento facial para um acesso instantâneo.</p>
+          </div>
+        </div>
+
+        <div className="bg-surface-container rounded-2xl p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+          <div className="space-y-1">
+            <p className="text-sm font-bold text-on-surface">
+              {currentUser.bio_id ? 'Biometria Ativa' : 'Biometria Desativada'}
+            </p>
+            <p className="text-xs text-secondary leading-relaxed max-w-sm">
+              Ao ativar, você poderá entrar no Holerium apenas com o sensor de digital do seu dispositivo. Seguro, criptografado e prático.
+            </p>
+          </div>
+
+          {!currentUser.bio_id ? (
+            <button 
+              onClick={registerBiometrics}
+              disabled={isRegisteringBio}
+              className="bg-primary text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
+            >
+              <Fingerprint className="w-4 h-4" />
+              {isRegisteringBio ? 'Registrando...' : 'Ativar Digital'}
+            </button>
+          ) : (
+            <button 
+              onClick={removeBiometrics}
+              disabled={isRegisteringBio}
+              className="bg-red-50 text-red-600 px-8 py-3 rounded-xl font-bold text-sm hover:bg-red-100 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
+            >
+              <Trash2 className="w-4 h-4" />
+              Remover Acesso
+            </button>
+          )}
+        </div>
+      </section>
 
       {!isColaborador && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-surface-container-low rounded-3xl p-10 shadow-sm border border-surface-container-high mt-4">

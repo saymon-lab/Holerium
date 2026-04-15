@@ -15,6 +15,7 @@ export default function Login() {
   const [loginTab, setLoginTab] = useState<'colaborador'|'admin'|'super'>('colaborador');
   const [error, setError] = useState('');
   const [isAboutOpen, setIsAboutOpen] = useState(false);
+  const [isBioLoading, setIsBioLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => {
     return localStorage.getItem('remember_me') === 'true';
   });
@@ -128,6 +129,57 @@ export default function Login() {
     } catch (e) {
       console.error('Erro de Login:', e);
       setError('Erro ao ler base de dados do servidor.');
+    }
+  };
+
+  const handleBiometricLogin = async () => {
+    try {
+      if (!window.PublicKeyCredential) {
+        setError('Seu dispositivo não suporta biometria.');
+        return;
+      }
+
+      setIsBioLoading(true);
+      setError('');
+
+      const challenge = new Uint8Array(32);
+      window.crypto.getRandomValues(challenge);
+
+      // Busca credencial do dispositivo
+      const assertion = await navigator.credentials.get({
+        publicKey: {
+          challenge,
+          timeout: 60000,
+          userVerification: "required",
+          rpId: window.location.hostname
+        }
+      }) as PublicKeyCredential;
+
+      if (assertion) {
+        // Busca o usuário pelo ID da credencial (bio_id)
+        const { data: user, error: dbError } = await supabase
+          .from('employees')
+          .select('*')
+          .eq('bio_id', assertion.id)
+          .maybeSingle();
+
+        if (dbError) throw dbError;
+
+        if (user) {
+          localStorage.setItem('currentUser', JSON.stringify(user));
+          await recordLog(user.name, 'Biometria', 'sucesso', 'Login via Digital/FaceID');
+          navigate('/dashboard');
+        } else {
+          setError('Biometria não vinculada a nenhum usuário. Por favor, entre com seu CPF primeiro.');
+        }
+      }
+    } catch (err: any) {
+      if (err.name !== 'NotAllowedError') {
+        console.error('Erro bio login:', err);
+        setError('Falha na autenticação biométrica.');
+      }
+    } finally {
+      setIsBioLoading(false);
     }
   };
 
@@ -355,15 +407,24 @@ export default function Login() {
                 <span className="px-6 text-[10px] font-bold text-outline uppercase tracking-[0.2em]">Autenticação Bio</span>
                 <div className="flex-1 h-px bg-surface-container"></div>
               </div>
-              <div className="flex justify-center space-x-6 opacity-30">
-                <div className="w-14 h-14 rounded-2xl border border-outline-variant flex items-center justify-center">
-                  <Fingerprint className="w-8 h-8" />
+              <div className="flex justify-center space-x-6">
+                <button 
+                  type="button"
+                  onClick={handleBiometricLogin}
+                  disabled={isBioLoading}
+                  className={cn(
+                    "w-14 h-14 rounded-2xl border border-outline-variant flex items-center justify-center transition-all hover:border-primary hover:text-primary active:scale-90",
+                    isBioLoading ? "bg-surface-container animate-pulse" : "bg-white"
+                  )}
+                  title="Entrar com Biometria"
+                >
+                  <Fingerprint className={cn("w-8 h-8", isBioLoading ? "text-primary" : "text-outline")} />
+                </button>
+                <div className="w-14 h-14 rounded-2xl border border-outline-variant flex items-center justify-center opacity-30 select-none">
+                  <ScanFace className="w-8 h-8 text-outline" />
                 </div>
-                <div className="w-14 h-14 rounded-2xl border border-outline-variant flex items-center justify-center">
-                  <ScanFace className="w-8 h-8" />
-                </div>
-                <div className="w-14 h-14 rounded-2xl border border-outline-variant flex items-center justify-center">
-                  <Key className="w-8 h-8" />
+                <div className="w-14 h-14 rounded-2xl border border-outline-variant flex items-center justify-center opacity-30 select-none">
+                  <Key className="w-8 h-8 text-outline" />
                 </div>
               </div>
             </div>
