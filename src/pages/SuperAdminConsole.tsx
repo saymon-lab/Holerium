@@ -321,15 +321,24 @@ export default function SuperAdminConsole() {
       let updatedCount = 0;
 
       for (const doc of docs) {
-        // Se o tamanho for 0 ou nulo, tenta buscar no Storage
-        const { data: metadata, error: metaErr } = await supabase.storage
-          .from('receipts')
-          .getMetadata(doc.file_path);
+        // Separa o caminho da pasta e o nome do arquivo
+        const parts = doc.file_path.split('/');
+        const filename = parts.pop();
+        const folder = parts.join('/');
 
-        if (metadata && metadata.size) {
+        // Busca o arquivo na pasta para obter os metadados (incluindo o size)
+        const { data: files, error: listErr } = await supabase.storage
+          .from('receipts')
+          .list(folder, {
+            search: filename
+          });
+
+        const fileInfo = files?.find(f => f.name === filename);
+
+        if (fileInfo && fileInfo.metadata && fileInfo.metadata.size) {
           await supabase
             .from('documents')
-            .update({ size: metadata.size })
+            .update({ size: fileInfo.metadata.size })
             .eq('id', doc.id);
           updatedCount++;
         }
