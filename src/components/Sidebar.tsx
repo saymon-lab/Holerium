@@ -9,7 +9,7 @@ import {
   LogOut,
   X
 } from 'lucide-react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
 
@@ -28,6 +28,8 @@ const navItems = [
 ];
 
 export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+  const navigate = useNavigate();
+  const location = useLocation();
   const [currentUser, setCurrentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('currentUser');
@@ -124,24 +126,34 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
         </div>
 
         <nav className="flex flex-col gap-1">
-          {visibleNavItems.map((item) => (
-            <NavLink
-              key={item.path}
-              to={item.path}
-              onClick={onClose}
-              className={({ isActive }) => cn(
-                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-slate-500 hover:bg-slate-50 hover:text-primary",
-                isActive && "text-primary font-bold border-r-[6px] border-[#E9C176] shadow-sm bg-white"
-              )}
-            >
-              {({ isActive }) => (
-                <>
-                  <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-slate-400")} />
-                  <span className="text-sm font-semibold">{item.label}</span>
-                </>
-              )}
-            </NavLink>
-          ))}
+          {visibleNavItems.map((item) => {
+            const isActive = location.pathname === item.path;
+            
+            return (
+              <button
+                key={item.path}
+                onClick={() => {
+                  if (item.path === '/documents') {
+                    // Resetar estado de visualização
+                    sessionStorage.removeItem('doc_viewState');
+                    sessionStorage.removeItem('doc_selectedYear');
+                    sessionStorage.removeItem('doc_selectedMonth');
+                    navigate('/documents', { state: { reset: Date.now() } });
+                  } else {
+                    navigate(item.path);
+                  }
+                  onClose();
+                }}
+                className={cn(
+                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-slate-500 hover:bg-slate-50 hover:text-primary w-full text-left",
+                  isActive && "text-primary font-bold border-r-[6px] border-[#E9C176] shadow-sm bg-white"
+                )}
+              >
+                <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-slate-400")} />
+                <span className="text-sm font-semibold">{item.label}</span>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="mt-auto px-4 pt-8">

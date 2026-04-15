@@ -17,13 +17,14 @@ import {
   Lock,
   CloudLightning
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
 import { motion } from 'motion/react';
 import { supabase } from '@/src/lib/supabase';
 
 export default function DocumentViewer() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [currentUser] = useState(() => {
     try {
@@ -100,6 +101,18 @@ export default function DocumentViewer() {
     if (selectedMonth) sessionStorage.setItem('doc_selectedMonth', selectedMonth);
     else sessionStorage.removeItem('doc_selectedMonth');
   }, [viewState, selectedYear, selectedMonth]);
+
+  // Resetar estado quando recebe sinal do Sidebar
+  useEffect(() => {
+    if (location.state && (location.state as any).reset) {
+      setViewState('years');
+      setSelectedYear(null);
+      setSelectedMonth(null);
+      setPdfUrl(null);
+      // Limpa o estado para não resetar em cada render
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   // 3. Atualizar meses disponíveis quando o ano for trocado ou os documentos carregarem
   useEffect(() => {
