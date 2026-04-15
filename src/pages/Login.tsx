@@ -5,6 +5,8 @@ import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import ContactButton from '@/src/components/ContactButton';
 import { supabase } from '@/src/lib/supabase';
+import AboutModal from '@/src/components/AboutModal';
+import { Info } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
@@ -12,6 +14,7 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [loginTab, setLoginTab] = useState<'colaborador'|'admin'|'super'>('colaborador');
   const [error, setError] = useState('');
+  const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => {
     return localStorage.getItem('remember_me') === 'true';
   });
@@ -365,17 +368,21 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="mt-12 pt-8 border-t border-surface-container text-center">
-              <p className="text-[10px] text-secondary font-semibold uppercase tracking-widest leading-relaxed">
-                Ambiente criptografado de ponta a ponta. 
-                <br />© {new Date().getFullYear()} • Holerium Corporativo
-              </p>
+            <div className="mt-12 pt-8 border-t border-surface-container text-center flex justify-center">
+              <button 
+                onClick={() => setIsAboutOpen(true)}
+                className="flex items-center gap-2 text-[10px] text-secondary/40 uppercase tracking-[0.2em] font-bold hover:text-primary transition-colors group"
+              >
+                Ambiente criptografado de ponta a ponta  •  © {new Date().getFullYear()} Holerium  •  Adrian Saymon
+                <Info className="w-3 h-3 group-hover:scale-110 transition-transform" />
+              </button>
             </div>
           </div>
         </div>
       </div>
 
       <ContactButton />
+      <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
     </div>
   );
 }
