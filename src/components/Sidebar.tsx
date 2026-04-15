@@ -6,10 +6,16 @@ import {
   History, 
   Settings, 
   Shield, 
-  LogOut
+  LogOut,
+  X
 } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
+
+interface SidebarProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Início', path: '/dashboard' },
@@ -20,7 +26,7 @@ const navItems = [
   { icon: Shield, label: 'Console Geral', path: '/superadmin' },
 ];
 
-export default function Sidebar() {
+export default function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [currentUser] = useState(() => {
     try {
       const saved = localStorage.getItem('currentUser');
@@ -33,7 +39,6 @@ export default function Sidebar() {
   const userAvatar = currentUser?.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80';
   const userIsSuper = ['Desenvolvedor Geral', 'superadmin'].includes(userRole);
   const userIsAdmin = ['Administrador do Sistema', 'Administrador', 'admin', 'superadmin', 'Desenvolvedor Geral'].includes(userRole);
-  const userLevel = userIsSuper ? 'Desenvolvedor' : userIsAdmin ? 'Admin' : 'Colaborador';
 
   const visibleNavItems = navItems.filter(item => {
     if (userIsSuper) return true;
@@ -54,67 +59,88 @@ export default function Sidebar() {
   });
 
   return (
-    <aside className="hidden lg:flex h-screen w-72 fixed left-0 top-0 bg-white border-r border-slate-100 flex-col py-8 px-4 gap-2 z-40">
-      <div className="mb-10 px-4 flex items-center gap-4">
-        <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 ring-2 ring-primary/5 flex-shrink-0 aspect-square">
-          <img
-            src={userAvatar}
-            alt={userName}
-            className="w-full h-full object-cover text-[10px]"
-            referrerPolicy="no-referrer"
-          />
-        </div>
-        <div>
-          <div className="text-primary font-bold text-sm leading-tight tracking-tight">{userName}</div>
-          <div className="text-slate-400 text-[10px] mt-0.5 font-medium">
-            {userIsSuper ? 'Desenvolvedor' : userIsAdmin ? 'Admin' : 'Colaborador'}
-          </div>
-        </div>
-      </div>
+    <>
+      {/* Backdrop for mobile */}
+      <div 
+        className={cn(
+          "fixed inset-0 bg-primary/20 backdrop-blur-sm z-40 transition-opacity lg:hidden",
+          isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        )}
+        onClick={onClose}
+      />
 
-      <nav className="flex flex-col gap-1">
-        {visibleNavItems.map((item) => (
+      <aside className={cn(
+        "h-screen w-72 fixed left-0 top-0 bg-white border-r border-slate-100 flex-col py-8 px-4 gap-2 z-50 transition-transform duration-300 lg:translate-x-0 lg:flex",
+        isOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
+        <div className="flex items-center justify-between mb-10 px-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full overflow-hidden bg-slate-100 ring-2 ring-primary/5 flex-shrink-0 aspect-square">
+              <img
+                src={userAvatar}
+                alt={userName}
+                className="w-full h-full object-cover text-[10px]"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div>
+              <div className="text-primary font-bold text-sm leading-tight tracking-tight">{userName}</div>
+              <div className="text-slate-400 text-[10px] mt-0.5 font-medium">
+                {userIsSuper ? 'Desenvolvedor' : userIsAdmin ? 'Admin' : 'Colaborador'}
+              </div>
+            </div>
+          </div>
+          <button onClick={onClose} className="lg:hidden p-2 text-slate-400 hover:text-primary transition-colors">
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <nav className="flex flex-col gap-1">
+          {visibleNavItems.map((item) => (
+            <NavLink
+              key={item.path}
+              to={item.path}
+              onClick={onClose}
+              className={({ isActive }) => cn(
+                "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-slate-500 hover:bg-slate-50 hover:text-primary",
+                isActive && "text-primary font-bold border-r-[6px] border-[#E9C176] shadow-sm bg-white"
+              )}
+            >
+              {({ isActive }) => (
+                <>
+                  <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-slate-400")} />
+                  <span className="text-sm font-semibold">{item.label}</span>
+                </>
+              )}
+            </NavLink>
+          ))}
+        </nav>
+
+        <div className="mt-auto px-4 pt-8">
           <NavLink
-            key={item.path}
-            to={item.path}
-            className={({ isActive }) => cn(
-              "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-slate-500 hover:bg-slate-50 hover:text-primary",
-              isActive && "text-primary font-bold border-r-[6px] border-[#E9C176] shadow-sm bg-white"
-            )}
+            to="/login"
+            onClick={() => {
+              localStorage.removeItem('currentUser');
+              sessionStorage.removeItem('doc_viewState');
+              sessionStorage.removeItem('doc_selectedYear');
+              sessionStorage.removeItem('doc_selectedMonth');
+              onClose();
+            }}
+            className="flex mb-4 items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
           >
-            {({ isActive }) => (
-              <>
-                <item.icon className={cn("w-5 h-5", isActive ? "text-primary" : "text-slate-400")} />
-                <span className="text-sm font-semibold">{item.label}</span>
-              </>
-            )}
+            <LogOut className="w-5 h-5" />
+            <span className="text-sm font-medium">Sair</span>
           </NavLink>
-        ))}
-      </nav>
 
-      <div className="mt-auto px-4 pt-8">
-        <NavLink
-          to="/login"
-          onClick={() => {
-            localStorage.removeItem('currentUser');
-            sessionStorage.removeItem('doc_viewState');
-            sessionStorage.removeItem('doc_selectedYear');
-            sessionStorage.removeItem('doc_selectedMonth');
-          }}
-          className="flex mb-4 items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10"
-        >
-          <LogOut className="w-5 h-5" />
-          <span className="text-sm font-medium">Sair</span>
-        </NavLink>
-
-        <div className="p-4 rounded-xl bg-surface-container-highest/50">
-          <p className="text-xs font-bold text-primary mb-1">Status do Sistema</p>
-          <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></div>
-            <span className="text-[10px] text-secondary">Serviço Ativo</span>
+          <div className="p-4 rounded-xl bg-surface-container-highest/50">
+            <p className="text-xs font-bold text-primary mb-1">Status do Sistema</p>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-tertiary-fixed animate-pulse"></div>
+              <span className="text-[10px] text-secondary">Serviço Ativo</span>
+            </div>
           </div>
         </div>
-      </div>
-    </aside>
+      </aside>
+    </>
   );
 }
