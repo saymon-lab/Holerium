@@ -92,15 +92,18 @@ serve(async (req) => {
           const { error: stoErr } = await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
           if (stoErr && stoErr.message !== 'The resource already exists') throw stoErr;
 
-          // Registro no Banco com estratégia "Limpeza de Conflitos"
+          // Registro no Banco - Estratégia "Força Bruta"
           try {
-            // 1. Limpar qualquer registro que use este CPF (limpo ou formatado) para este mês/ano/categoria
-            // Isso evita o erro de "unique_document_sync"
+            // 1. Limpeza Individual (Garante que nenhum fantasma de CPF limpo ou formatado sobreviva)
             await supabase.from('documents').delete()
               .eq('year', year).eq('month', month).eq('category', category)
-              .or(`owner_cpf.eq."${cleanCpf}",owner_cpf.eq."${formattedCpf}"`);
+              .eq('owner_cpf', cleanCpf);
+            
+            await supabase.from('documents').delete()
+              .eq('year', year).eq('month', month).eq('category', category)
+              .eq('owner_cpf', formattedCpf);
 
-            // 2. Inserir o novo registro (priorizando o CPF limpo que é o padrão de 2026)
+            // 2. Preparar os dados (Priorizamos o Limpo para 2026, mas temos o Fallback)
             const docData = { 
               owner_cpf: cleanCpf, 
               year, month, category, 
@@ -108,19 +111,27 @@ serve(async (req) => {
               file_path: cloudPath 
             };
 
+            // 3. Tenta Inserir (Limpo)
             const { error: insErr } = await supabase.from('documents').insert(docData);
             
             if (insErr) {
-              // Failback caso o banco exija o CPF formatado (fk_owner)
-              docData.owner_cpf = formattedCpf;
-              const { error: insErr2 } = await supabase.from('documents').insert(docData);
-              if (insErr2) throw insErr2;
+              // Se falhou por chave duplicada mesmo após delete (insistente), apagamos de novo por garantia
+              if (insErr.message.includes('unique')) {
+                 await supabase.from('documents').delete().eq('year', year).eq('month', month).eq('category', category).eq('owner_cpf', cleanCpf);
+                 await supabase.from('documents').insert(docData);
+              } 
+              // Se falhou por FK (exige pontos), tenta o formato com pontos
+              else {
+                docData.owner_cpf = formattedCpf;
+                const { error: insErr2 } = await supabase.from('documents').insert(docData);
+                if (insErr2) throw insErr2;
+              }
             }
             
-            console.log(`  [OK] Sincronizado: ${employee.name} (${month}/${year})`);
+            console.log(`  [SUCESSO] Sincronizado: ${employee.name} (${month}/${year})`);
             totalSynced++;
           } catch (dbEx: any) {
-            console.error(`  [!] Falha no banco para ${employee.name}:`, dbEx.message);
+            console.error(`  [!] Falha fatal no banco para ${employee.name}:`, dbEx.message);
             errorCount++;
           }
         } catch (e: any) {
