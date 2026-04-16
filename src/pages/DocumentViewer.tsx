@@ -177,6 +177,60 @@ export default function DocumentViewer() {
     </div>
   );
 
+  const renderRendimentos = () => (
+    <div className="space-y-8 animate-fade-in">
+      <div className="flex items-center gap-5 mb-10">
+        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold">
+          <ArrowLeft className="w-5 h-5" /> Voltar
+        </button>
+        <div>
+          <h2 className="text-5xl font-extrabold text-on-surface">Meus Rendimentos</h2>
+          <p className="text-secondary text-lg">Documentos anuais para declaração de IRPF.</p>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cloudDocuments
+          .filter(doc => doc.category === 'rendimentos' || doc.month === '16')
+          .map((doc, idx) => (
+            <motion.div
+              key={idx}
+              whileHover={{ y: -5 }}
+              className="bg-white p-8 rounded-3xl border border-surface-container-high shadow-sm flex flex-col gap-6"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
+                  <FileText className="w-8 h-8" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-xl text-on-surface">Exercício {doc.year}</h4>
+                  <p className="text-xs text-secondary-variant font-bold uppercase tracking-wider">Comprovante de Rendimentos</p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setSelectedDocument(doc);
+                  setSelectedMonth('Comprovante de Rendimentos');
+                  setViewState('document');
+                }}
+                className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm"
+              >
+                Visualizar Documento
+              </button>
+            </motion.div>
+          ))}
+      </div>
+      
+      {cloudDocuments.filter(doc => doc.category === 'rendimentos' || doc.month === '16').length === 0 && (
+        <div className="flex flex-col items-center justify-center p-20 opacity-50">
+          <ShieldCheck className="w-16 h-16 mb-4 text-slate-300" />
+          <p className="font-bold text-on-surface">Nenhum comprovante disponível</p>
+          <p className="text-sm text-secondary">Os comprovantes anuais serão listados aqui quando disponíveis.</p>
+        </div>
+      )}
+    </div>
+  );
+
   const renderYears = () => (
     <div className="space-y-8 animate-fade-in">
        <div className="flex items-center gap-5 mb-10">
@@ -201,6 +255,7 @@ export default function DocumentViewer() {
     <div className="p-10 flex-1 flex flex-col">
       {viewState === 'years' && renderYears()}
       {viewState === 'months' && renderMonths()}
+      {viewState === 'rendimentos' && renderRendimentos()}
       {viewState === 'document' && (
         <div className="flex-1 flex flex-col gap-6">
           <button onClick={() => setViewState('months')} className="w-fit flex items-center gap-2 px-4 py-2 rounded-full bg-white text-primary font-bold shadow-sm">
