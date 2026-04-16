@@ -85,31 +85,47 @@ serve(async (req) => {
 
           // Registro no Banco de Dados com Segurança Máxima
           try {
+            // TESTE DEFINITIVO: Priorizar o CPF LIMPO (só números) que funcionou para Jan/Fev/Mar 2026
+            const targetCpf = cleanCpf; 
+
             const { data: existing, error: findErr } = await supabase.from('documents')
               .select('id').eq('year', year).eq('month', month).eq('category', category)
-              .or(`owner_cpf.eq."${formattedCpf}",owner_cpf.eq."${cleanCpf}"`).maybeSingle();
+              .or(`owner_cpf.eq."${cleanCpf}",owner_cpf.eq."${formattedCpf}"`)
+              .maybeSingle();
 
-            if (findErr) throw new Error(`Query DB falhou: ${findErr.message}`);
+            if (findErr) throw findErr;
 
-            const docData = { owner_cpf: formattedCpf, year, month, category, filename: normalizedName, file_path: cloudPath };
+            const docData = { 
+              owner_cpf: targetCpf, 
+              year, month, category, 
+              filename: normalizedName, 
+              file_path: cloudPath 
+            };
 
             if (existing && existing.id) {
               const { error: updErr } = await supabase.from('documents').update(docData).eq('id', existing.id);
-              if (updErr) console.error(`[!] Erro Update: ${updErr.message}`);
+              if (updErr) throw updErr;
+              totalSynced++;
+              console.log(`  [ATUALIZADO] ${employee.name} (${month}/${year})`);
             } else {
+              // Tenta inserir primeiro com o CPF limpo
               const { error: insErr } = await supabase.from('documents').insert(docData);
+              
               if (insErr) {
-                docData.owner_cpf = cleanCpf; // Tenta CPF limpo (backup)
+                // Plano B: Tenta com CPF formatado se o limpo falhar
+                console.warn(`  [!] Falha com CPF limpo, tentando formatado para ${employee.name}...`);
+                docData.owner_cpf = formattedCpf;
                 const { error: insErr2 } = await supabase.from('documents').insert(docData);
-                if (insErr2) console.error(`[!] Erro Insert: ${insErr2.message}`);
+                if (insErr2) throw insErr2;
               }
+              
+              totalSynced++;
+              console.log(`  [INSERIDO] ${employee.name} (${month}/${year})`);
             }
-          } catch (dbEx) {
-            console.error(`[!] Erro de registro no banco para ${employee.name}:`, dbEx.message);
+          } catch (dbEx: any) {
+            console.error(`  [!] Falha no banco para ${employee.name}:`, dbEx.message);
+            errorCount++;
           }
-
-          totalSynced++;
-          console.log(`[OK] ${employee.name} (${month}/${year})`);
         } catch (e: any) {
           console.error(`[!] Erro no arquivo ${file.name}:`, e.message);
           errorCount++;
