@@ -46,7 +46,7 @@ export default function DocumentViewer() {
   const [years, setYears] = useState<string[]>([]);
 
   const months = [
-    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
     '13º Salário (1ª Parc.)', '13º Salário (2ª Parc.)', 'Férias', 'Comprovante de Rendimentos'
   ];
@@ -59,7 +59,7 @@ export default function DocumentViewer() {
       setLoading(true);
       const cleanCpf = userCpf.replace(/\D/g, '');
       const formattedCpf = userCpf.includes('.') ? userCpf : userCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-      
+
       const searchTerms = Array.from(new Set([userCpf, cleanCpf, formattedCpf]));
       console.log(`[DEBUG] Buscando CPFs:`, searchTerms);
 
@@ -108,7 +108,7 @@ export default function DocumentViewer() {
       setSelectedMonth(null);
       setSelectedDocument(null);
       setPdfUrl(null);
-      
+
       // Limpar o estado da navegação para não repetir o reset ao recarregar
       navigate(location.pathname, { replace: true, state: {} });
     }
@@ -129,7 +129,7 @@ export default function DocumentViewer() {
           const { data } = supabase.storage
             .from('receipts')
             .getPublicUrl(selectedDocument.file_path);
-          
+
           if (data?.publicUrl) {
             setPdfUrl(data.publicUrl);
           }
@@ -167,20 +167,20 @@ export default function DocumentViewer() {
           <p className="text-secondary text-lg">Selecione o mês desejado.</p>
         </div>
       </div>
-      
+
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {months.filter(m => m !== 'Comprovante de Rendimentos').map(month => {
           const mIndex = months.indexOf(month) + 1;
           const monthNum = mIndex.toString().padStart(2, '0');
-          const doc = cloudDocuments.find(d => 
-            String(d.year).trim() === String(selectedYear).trim() && 
+          const doc = cloudDocuments.find(d =>
+            String(d.year).trim() === String(selectedYear).trim() &&
             parseInt(d.month) === mIndex &&
             d.category !== 'rendimentos'
           );
           const isAvailable = !!doc;
 
           return (
-            <motion.button key={month} whileHover={isAvailable ? { y: -4 } : {}} onClick={() => { if (isAvailable) { setSelectedMonth(month); setSelectedDocument(doc); setViewState('document'); }}}
+            <motion.button key={month} whileHover={isAvailable ? { y: -4 } : {}} onClick={() => { if (isAvailable) { setSelectedMonth(month); setSelectedDocument(doc); setViewState('document'); } }}
               className={cn("bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-5", isAvailable ? "border-emerald-500/30" : "opacity-60 grayscale cursor-not-allowed")}>
               <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", isAvailable ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
                 {isAvailable ? <FileText /> : <Lock />}
@@ -238,7 +238,7 @@ export default function DocumentViewer() {
             </motion.button>
           ))}
       </div>
-      
+
       {cloudDocuments.filter(doc => doc.category === 'rendimentos' || doc.month === '16').length === 0 && (
         <div className="flex flex-col items-center justify-center p-20 opacity-50">
           <ShieldCheck className="w-16 h-16 mb-4 text-slate-300" />
@@ -251,7 +251,7 @@ export default function DocumentViewer() {
 
   const renderYears = () => (
     <div className="space-y-8 animate-fade-in">
-       <div className="flex items-center gap-5 mb-10">
+      <div className="flex items-center gap-5 mb-10">
         <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold">
           <ArrowLeft className="w-5 h-5" /> Voltar
         </button>

@@ -180,7 +180,13 @@ async function downloadFile(id: string, token: string) {
 }
 
 function matchEmployee(fileName: string, employees: any[]) {
-  const simplify = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().trim();
+  const simplify = (t: string) => 
+    t.normalize("NFD")
+     .replace(/[\u0300-\u036f]/g, "")
+     .toUpperCase()
+     .replace(/(.)\1+/g, "$1") // Ignora letras duplicadas (LL -> L, SS -> S, etc)
+     .trim();
+
   const fName = simplify(fileName);
   return employees.find(e => {
     if (fName.includes(e.cpf.replace(/\D/g, ''))) return true;
