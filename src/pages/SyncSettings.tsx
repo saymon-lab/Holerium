@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, BadgeAlert, FolderOpen, Save, ArrowLeft, Fingerprint, Trash2, X, ZoomIn, Lock } from 'lucide-react';
+import { Camera, BadgeAlert, FolderOpen, Save, ArrowLeft, Fingerprint, Trash2, X, ZoomIn, Lock, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
@@ -17,6 +17,7 @@ export default function SyncSettings() {
   const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [newPassword, setNewPassword] = useState('');
+  const [showCurrentPass, setShowCurrentPass] = useState(false);
 
   // States for Cropping
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
@@ -347,8 +348,20 @@ export default function SyncSettings() {
 
           <div className="bg-surface-container rounded-2xl p-6 border border-surface-container-high flex items-center justify-between">
             <div className="space-y-1">
-              <p className="text-[10px] font-black text-secondary uppercase tracking-widest">Senha PIN (4 Dígitos)</p>
-              <p className="text-xl font-black text-primary tracking-[0.4em]">{currentUser.password || '••••'}</p>
+              <p className-[10px] font-black text-secondary uppercase tracking-widest">Senha PIN (4 Dígitos)</p>
+              <div className="flex items-center gap-3">
+                <p className="text-xl font-black text-primary tracking-[0.4em]">
+                  {currentUser.password ? (showCurrentPass ? currentUser.password : '••••') : '••••'}
+                </p>
+                {currentUser.password && (
+                  <button 
+                    onClick={() => setShowCurrentPass(!showCurrentPass)}
+                    className="p-1.5 hover:bg-white rounded-lg text-slate-400 hover:text-primary transition-all border border-transparent hover:border-slate-100"
+                  >
+                    {showCurrentPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                )}
+              </div>
             </div>
             <button 
               onClick={() => setShowPasswordForm(true)}

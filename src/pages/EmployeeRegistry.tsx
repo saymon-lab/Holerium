@@ -16,7 +16,9 @@ import {
   Loader2,
   FileUp,
   History,
-  Download
+  Download,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 
 import { motion, AnimatePresence } from 'motion/react';
@@ -62,6 +64,7 @@ export default function EmployeeRegistry() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
   const [editForm, setEditForm] = useState({ name: '', cpf: '' });
+  const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
   
   const [currentUser] = useState(() => {
     try {
@@ -613,12 +616,24 @@ export default function EmployeeRegistry() {
                   </td>
                   <td className="px-8 py-6 text-center">
                     <div className="flex flex-col items-center">
-                      <span className={cn(
-                        "font-mono text-sm font-bold tracking-widest px-3 py-1 bg-slate-50 rounded-lg border border-slate-100",
-                        emp.password ? "text-primary" : "text-slate-300 italic text-[10px]"
-                      )}>
-                        {emp.password || 'Não cadastrada'}
-                      </span>
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100 group/pass">
+                        <span className={cn(
+                          "font-mono text-sm font-bold tracking-widest",
+                          emp.password ? "text-primary" : "text-slate-300 italic text-[10px]"
+                        )}>
+                          {emp.password 
+                            ? (visiblePasswords[emp.id] ? emp.password : '••••') 
+                            : 'Não cadastrada'}
+                        </span>
+                        {emp.password && (
+                          <button 
+                            onClick={() => setVisiblePasswords(prev => ({ ...prev, [emp.id]: !prev[emp.id] }))}
+                            className="p-1 hover:bg-white rounded-md text-slate-400 hover:text-primary transition-all"
+                          >
+                            {visiblePasswords[emp.id] ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </td>
                   <td className="px-8 py-6 text-right">
