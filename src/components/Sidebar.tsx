@@ -22,14 +22,15 @@ interface SidebarProps {
 
 const navItems = [
   { icon: LayoutDashboard, label: 'Início', path: '/dashboard' },
-  { icon: FileText, label: 'Meus Documentos', path: '/documents' },
+  { icon: FileText, label: 'Holerites', path: '/documents' },
+  { icon: History, label: 'Meus Rendimentos', path: '/rendimentos' },
   { icon: ShieldAlert, label: 'Console Admin', path: '/admin' },
-  { icon: History, label: 'Logs de Auditoria', path: '/logs' },
+  { icon: History, label: 'Logs de Auditoria', path: '/logs', adminOnly: true },
   { icon: Settings, label: 'Meu Perfil', path: '/settings' },
   { icon: Shield, label: 'Console Geral', path: '/superadmin' },
 ];
 
-export default function Sidebar({ isOpen, onClose }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, isCollapsed }: SidebarProps) {
   const navigate = useNavigate();
   const location = useLocation();
   const [currentUser, setCurrentUser] = useState(() => {
@@ -68,26 +69,24 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
   const userName = currentUser?.name || 'Administrador';
   const userRole = currentUser?.role || 'user';
-  const userAvatar = currentUser?.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=100&q=80';
+  const userAvatar = currentUser?.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=020617&color=fff&size=256&bold=true`;
   const userIsSuper = ['Desenvolvedor Geral', 'superadmin'].includes(userRole);
   const userIsAdmin = ['Administrador do Sistema', 'Administrador', 'admin', 'superadmin', 'Desenvolvedor Geral'].includes(userRole);
 
   const visibleNavItems = navItems.filter(item => {
-    if (userIsSuper) return true;
-
-    try {
-      const permsSaved = localStorage.getItem('menu_permissions_v1');
-      const perms = permsSaved ? JSON.parse(permsSaved) : {
-        admin: ['/dashboard', '/documents', '/admin', '/logs', '/settings'],
-        collaborator: ['/dashboard', '/documents', '/settings']
-      };
-
-      if (userIsAdmin) return perms.admin.includes(item.path);
-      return perms.collaborator.includes(item.path);
-    } catch {
-      if (userIsAdmin) return item.path !== '/superadmin';
-      return item.path === '/documents' || item.path === '/settings' || item.path === '/dashboard';
+    // Esconder menus de documentos pessoais para o Desenvolvedor Master
+    if (userIsSuper && (item.path === '/documents' || item.path === '/rendimentos')) {
+      return false;
     }
+
+    if (userIsSuper) return true;
+    
+    // Filtro simplificado de visibilidade
+    if (item.path === '/superadmin' && !userIsSuper) return false;
+    if (item.path === '/admin' && !userIsAdmin) return false;
+    if (item.adminOnly && !userIsAdmin) return false;
+    
+    return true;
   });
 
   return (
@@ -95,16 +94,16 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
       {/* Backdrop for mobile */}
       <div
         className={cn(
-          "fixed inset-0 bg-primary/20 backdrop-blur-sm z-40 transition-opacity lg:hidden",
+          "fixed inset-0 bg-primary/40 backdrop-blur-sm z-40 transition-opacity lg:hidden",
           isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
         )}
         onClick={onClose}
       />
 
       <aside className={cn(
-        "h-screen fixed left-0 top-0 bg-[#0B1F5B] border-r border-white/5 flex-col py-8 px-4 gap-2 z-50 transition-all duration-300 lg:translate-x-0 lg:flex shadow-2xl overflow-hidden",
-        isOpen ? "translate-x-0" : "-translate-x-full",
-        isCollapsed ? "lg:w-20" : "lg:w-72"
+        "h-screen fixed left-0 top-0 bg-primary border-r border-white/5 flex flex-col py-8 px-4 gap-2 z-50 transition-all duration-500 ease-in-out shadow-2xl overflow-hidden",
+        isOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0",
+        isCollapsed ? "lg:w-[88px]" : "lg:w-72"
       )}>
         <div className={cn(
           "flex items-center mb-10 transition-all duration-300",
@@ -126,47 +125,63 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               <motion.div 
                 initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="bg-white/5 p-3 rounded-2xl border border-white/5 min-w-[160px]"
+                className="flex-1 min-w-0"
               >
-                <div className="text-white font-black text-xs leading-tight tracking-tight truncate w-full">{userName}</div>
-                <div className="text-[#E9C176] text-[8px] mt-1 font-black uppercase tracking-widest bg-[#E9C176]/10 inline-block px-2 py-0.5 rounded-full">
-                  {userIsSuper ? 'Desenvolvedor' : userIsAdmin ? 'Admin' : 'Colaborador'}
+                <div className="text-white font-black text-sm tracking-tight leading-tight line-clamp-2">{userName}</div>
+                <div className={cn(
+                  "text-[#E9C176] text-[8px] mt-1 font-black uppercase tracking-[0.2em] opacity-80",
+                  !isOpen && "hidden lg:block"
+                )}>
+                  {userIsSuper ? 'Administrador Geral' : userIsAdmin ? 'Administrador' : 'Colaborador'}
                 </div>
               </motion.div>
             )}
           </div>
           {!isCollapsed && (
-            <button onClick={onClose} className="lg:hidden p-2 text-white/40 hover:text-white transition-colors">
-              <X className="w-5 h-5" />
+            <button 
+              onClick={onClose} 
+              className="lg:hidden p-2.5 bg-white/5 text-[#E9C176] hover:bg-[#E9C176] hover:text-primary rounded-xl transition-all shadow-lg ring-1 ring-white/10 group"
+            >
+              <X className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300" />
             </button>
           )}
         </div>
 
         <nav className="flex flex-col gap-1">
           {visibleNavItems.map((item) => {
-            const isActive = location.pathname === item.path;
+            const isActive = location.pathname === item.path || (item.label === 'Meus Rendimentos' && sessionStorage.getItem('doc_viewState') === 'rendimentos' && location.pathname === '/documents');
             
             return (
               <button
-                key={item.path}
+                key={item.label}
                 onClick={() => {
-                  if (item.path === '/documents') {
-                    // Resetar estado de visualização
-                    sessionStorage.removeItem('doc_viewState');
+                  if (item.label === 'Holerites') {
+                    sessionStorage.setItem('doc_viewState', 'years');
                     sessionStorage.removeItem('doc_selectedYear');
-                    sessionStorage.removeItem('doc_selectedMonth');
-                    navigate('/documents', { state: { reset: Date.now() } });
+                    navigate('/documents', { state: { reset: true } });
+                  } else if (item.label === 'Meus Rendimentos') {
+                    sessionStorage.setItem('doc_viewState', 'rendimentos');
+                    navigate('/documents', { state: { rendimentos: true, reset: true } });
                   } else {
                     navigate(item.path);
                   }
                   onClose();
                 }}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-white/60 hover:bg-white/5 hover:text-white w-full text-left overflow-hidden",
-                  isActive && "text-[#E9C176] font-bold border-r-[4px] border-[#E9C176] bg-white/5 shadow-sm shadow-black/20",
+                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden w-full text-left",
+                  isActive 
+                    ? "bg-white/10 text-white shadow-lg ring-1 ring-white/10" 
+                    : "text-white/60 hover:text-white hover:bg-white/5",
                   isCollapsed && "justify-center px-0 gap-0"
                 )}
               >
+                {/* Active Indicator Bar */}
+                {isActive && (
+                  <motion.div 
+                    layoutId="active-nav-bar"
+                    className="absolute left-0 top-3 bottom-3 w-1 bg-[#E9C176] rounded-r-full"
+                  />
+                )}
                 <item.icon className={cn("w-5 h-5 flex-shrink-0 transition-transform", isActive ? "text-[#E9C176]" : "text-white/40", !isActive && "group-hover:scale-110")} />
                 {!isCollapsed && (
                   <motion.span 
@@ -184,7 +199,6 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
 
         <div className="mt-auto px-4 pt-8">
           <button
-            type="button"
             onClick={() => {
               localStorage.removeItem('currentUser');
               sessionStorage.removeItem('doc_viewState');
@@ -194,12 +208,12 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
               navigate('/login');
             }}
             className={cn(
-              "flex mb-4 items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ease-in-out text-red-400 hover:bg-red-500/10 w-full",
+              "flex mb-4 items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group text-red-500 hover:bg-red-500/10 w-full",
               isCollapsed && "justify-center px-0 gap-0"
             )}
           >
-            <LogOut className="w-5 h-5 flex-shrink-0" />
-            {!isCollapsed && <span className="text-sm font-medium">Sair</span>}
+            <LogOut className="w-5 h-5 flex-shrink-0 transition-transform group-hover:-translate-x-1" />
+            {!isCollapsed && <span className="text-sm font-black tracking-tight">Sair do Portal</span>}
           </button>
 
           <div className={cn(
@@ -208,10 +222,10 @@ export default function Sidebar({ isOpen, onClose }: SidebarProps) {
           )}>
             {!isCollapsed ? (
               <>
-                <p className="text-[10px] font-bold text-[#E9C176] mb-1 uppercase tracking-widest">Status do Sistema</p>
+                <p className="text-[10px] font-black text-[#E9C176] mb-1 uppercase tracking-[0.2em]">Status do Sistema</p>
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
-                  <p className="text-[10px] text-white/50 font-bold uppercase tracking-tight">Serviço Ativo</p>
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.6)] animate-pulse" />
+                  <p className="text-[10px] text-white/50 font-black uppercase tracking-widest">Serviço Ativo • v2.5.0</p>
                 </div>
               </>
             ) : (

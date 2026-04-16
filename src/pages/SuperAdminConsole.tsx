@@ -16,6 +16,7 @@ import {
   X, 
   Check, 
   AlertCircle,
+  AlertTriangle,
   FileText,
   Activity,
   UserCheck,
@@ -103,8 +104,9 @@ export default function SuperAdminConsole() {
   const [isDeveloper, setIsDeveloper] = useState(false);
 
   useEffect(() => {
+    console.log('--- SuperAdminConsole v2.1 (Delete-then-Insert) Active ---');
     fetchData();
-    initScripts(); // Inicializa os scripts do Google no carregamento
+    initScripts(); 
     
     // Verifica se o usuário atual é o Desenvolvedor Master
     const userJson = localStorage.getItem('currentUser');
@@ -154,6 +156,19 @@ export default function SuperAdminConsole() {
       setSyncProgress({ current: 0, total: driveFiles.length, status: 'Processando arquivos do Drive...' });
 
       let count = 0;
+      
+      // MODO DIAGNÓSTICO: Descobrir colunas da tabela "documents"
+      try {
+        const { data: sample } = await supabase.from('documents').select('*').limit(1).maybeSingle();
+        if (sample) {
+          const columns = Object.keys(sample);
+          addLog('info', `Diagnóstico: Colunas detectadas: ${columns.join(', ')}`);
+          if (!columns.includes('category')) {
+            addLog('error', 'AVISO: Coluna "category" não encontrada! Execute o script SQL no Dashboard do Supabase.');
+          }
+        }
+      } catch (e) {}
+
       for (const driveFile of driveFiles) {
         count++;
         const fileName = driveFile.name;
@@ -165,17 +180,26 @@ export default function SuperAdminConsole() {
         
         const normalize = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
         const folderNorm = normalize(folderName);
+        let category = 'holerite';
         
         if (folderNorm.includes('FERIAS')) {
           month = '15';
+          category = 'ferias';
           const yMatch = folderName.match(/(\d{4})/) || fileName.match(/(\d{4})/);
           if (yMatch) year = yMatch[1];
         } else if (folderNorm.includes('13') && (folderNorm.includes('1ª') || folderNorm.includes('1A'))) {
           month = '13';
+          category = '13_salario_1';
           const yMatch = folderName.match(/(\d{4})/) || fileName.match(/(\d{4})/);
           if (yMatch) year = yMatch[1];
         } else if (folderNorm.includes('13') && (folderNorm.includes('2ª') || folderNorm.includes('2A'))) {
           month = '14';
+          category = '13_salario_2';
+          const yMatch = folderName.match(/(\d{4})/) || fileName.match(/(\d{4})/);
+          if (yMatch) year = yMatch[1];
+        } else if (folderNorm.includes('DIRF') || folderNorm.includes('RENDIMENTOS') || folderNorm.includes('INFORME')) {
+          month = '16';
+          category = 'rendimentos';
           const yMatch = folderName.match(/(\d{4})/) || fileName.match(/(\d{4})/);
           if (yMatch) year = yMatch[1];
         } else {
@@ -184,7 +208,6 @@ export default function SuperAdminConsole() {
             month = folderMatch[1];
             year = folderMatch[2];
           } else {
-             // Tenta pegar o ano do nome do arquivo se não achou na pasta
              const yMatch = fileName.match(/(\d{4})/);
              if (yMatch) year = yMatch[1];
           }
@@ -213,7 +236,7 @@ export default function SuperAdminConsole() {
         });
 
         if (!employee) {
-          addLogToHistory('error', `Não identificado: ${fileName}`);
+          addLog('error', `Não identificado: ${fileName}`);
           continue;
         }
 
@@ -233,34 +256,48 @@ export default function SuperAdminConsole() {
           continue;
         }
 
-        // Verifica se já existe para decidir o log
-        const { data: existingDoc } = await supabase
+        // ESTRATÉGIA DE ALTA CONFIABILIDADE: Limpeza Manual por ID + Inserção
+        // IMPORTANTE: Usamos o CPF EXATAMENTE como está no objeto employee para manter a FK íntegra
+        const targetCpf = employee.cpf; 
+        const cleanCpf = targetCpf.replace(/\D/g, '');
+
+        // 1. Buscar se já existe um documento para este período (Ano/Mês)
+        const { data: conflicts } = await supabase
           .from('documents')
           .select('id')
-          .eq('owner_cpf', employee.cpf)
           .eq('year', year)
           .eq('month', month)
-          .maybeSingle();
+          .or(`owner_cpf.eq."${targetCpf}",owner_cpf.eq."${cleanCpf}"`);
 
+        if (conflicts && conflicts.length > 0) {
+          // Deleta todos os conflitos encontrados um a um para garantir limpeza
+          for (const conflict of conflicts) {
+            await supabase.from('documents').delete().eq('id', conflict.id);
+          }
+        }
+
+        // 2. Agora o terreno está limpo. Podemos inserir com segurança usando o CPF oficial.
         const { error: dbErr } = await supabase
           .from('documents')
-          .upsert({
-            owner_cpf: employee.cpf,
+          .insert({
+            owner_cpf: targetCpf, // Usando o valor original para bater com a FK
             year: year,
             month: month,
             filename: normalizedFileName,
             file_path: cloudPath,
-            size: fileContent.size // Armazena o tamanho real do arquivo
+            size: fileContent.size,
+            category: category // Adicionando suporte à categoria
           });
 
         if (dbErr) {
-          addLog('error', `Erro Banco: ${dbErr.message}`);
-        } else {
-          if (existingDoc) {
-            addLog('update', `Atualizado: ${employee.name} (${month}/${year})`);
+          if (dbErr.message.includes('fk_owner')) {
+             addLog('error', `Pulei: ${employee.name} (CPF ${targetCpf} não bate com o banco)`);
           } else {
-            addLog('success', `Sucesso: ${employee.name} (${month}/${year})`);
+             const detail = (dbErr as any).details || (dbErr as any).hint || '';
+             addLog('error', `Falha Crítica: ${dbErr.message} | ${detail}`);
           }
+        } else {
+          addLog('success', `Sincronizado: ${employee.name} (${month}/${year})`);
         }
 
         setSyncProgress(prev => ({ ...prev, current: count }));
@@ -413,10 +450,74 @@ export default function SuperAdminConsole() {
       downloadAnchorNode.setAttribute("download", `portal_backup_completo_${new Date().toISOString().split('T')[0]}.json`);
       document.body.appendChild(downloadAnchorNode);
       downloadAnchorNode.click();
-      downloadAnchorNode.remove();
-      alert('Backup exportado com sucesso!');
+      document.body.removeChild(downloadAnchorNode);
     } catch (err: any) {
       alert('Erro ao exportar backup: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCleanupJan2025 = async () => {
+    if (!window.confirm('Deseja deletar os registros E OS ARQUIVOS físicos de Janeiro de 2025? (Ação recomendada para limpeza total)')) return;
+    
+    try {
+      setLoading(true);
+      
+      // 1. Buscar os caminhos dos arquivos antes de deletar do banco
+      const { data: docsToDelete } = await supabase
+        .from('documents')
+        .select('file_path')
+        .eq('month', '01')
+        .eq('year', '2025');
+
+      if (docsToDelete && docsToDelete.length > 0) {
+        const paths = docsToDelete.map(d => d.file_path);
+        
+        // 2. Remover do Storage (Limite de 1000 por vez no Supabase SDK)
+        const { error: storageError } = await supabase.storage
+          .from('receipts')
+          .remove(paths);
+          
+        if (storageError) console.error('Erro ao limpar storage:', storageError);
+      }
+      
+      // 3. Deletar do Banco de Dados
+      const { error } = await supabase
+        .from('documents')
+        .delete()
+        .eq('month', '01')
+        .eq('year', '2025');
+      
+      if (error) throw error;
+      
+      // 4. LIMPEZA PROFUNDA (Varredura por Funcionário para arquivos órfãos)
+      addLog('info', 'Iniciando varredura profunda no Storage para remover arquivos órfãos...');
+      const { data: employees } = await supabase.from('employees').select('cpf');
+      
+      if (employees && employees.length > 0) {
+        let totalFilesDeleted = 0;
+        for (const emp of employees) {
+          const folderPath = `${emp.cpf}/2025/01`;
+          try {
+            // Lista arquivos na pasta específica do mês
+            const { data: files } = await supabase.storage.from('receipts').list(folderPath);
+            if (files && files.length > 0) {
+              const fullPaths = files.map(f => `${folderPath}/${f.name}`);
+              await supabase.storage.from('receipts').remove(fullPaths);
+              totalFilesDeleted += files.length;
+            }
+          } catch (e) {
+            // Ignora erros se a pasta não existir para esse CPF
+          }
+        }
+        addLog('success', `Varredura concluída. ${totalFilesDeleted} arquivos órfãos removidos do Storage.`);
+      }
+
+      alert('Limpeza TOTAL concluída (Banco de Dados + Storage)!');
+      calculateStorageUsage();
+    } catch (err: any) {
+      alert('Erro ao limpar Janeiro/2025: ' + err.message);
     } finally {
       setLoading(false);
     }
@@ -483,7 +584,14 @@ export default function SuperAdminConsole() {
   };
 
   const handleResetCloudDocuments = async () => {
-    if (!confirm('PERIGO: Isso apagará TODOS os registros de documentos da nuvem. Os funcionários permanecerão, mas os holerites sumirão do portal. Confirmar?')) return;
+    const password = window.prompt('AÇÃO CRÍTICA: Insira a SENHA DE DESENVOLVEDOR para confirmar a exclusão de TODOS os documentos do banco:');
+    
+    if (password !== 'dev2026') {
+      alert('Senha incorreta. Operação cancelada por segurança.');
+      return;
+    }
+
+    if (!confirm('CONFIRMAÇÃO FINAL: Isso apagará TODOS os registros de documentos da nuvem. Deseja mesmo continuar?')) return;
     
     try {
       setLoading(true);
@@ -525,44 +633,61 @@ export default function SuperAdminConsole() {
           if (entry.kind === 'directory') {
             await scan(entry, `${currentPath}${entry.name}/`);
           } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
-            const pathParts = currentPath.split('/').filter(Boolean);
-            let year = syncReferenceYear; // Fallback principal para anos base
-            let month = '01';
             const normalize = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-            const folderNorm = normalize(entry.name);
+            const pathParts = currentPath.split('/').filter(Boolean);
+            const fullPathNorm = normalize(currentPath + entry.name);
+            
+            let year = syncReferenceYear;
+            let month = '01';
+            let category = 'holerite';
+            
+            const fileNameNorm = normalize(entry.name);
             const parentNorm = (pathParts.length > 0 ? normalize(pathParts[pathParts.length-1]) : '');
             
-            if (folderNorm.includes('FERIAS') || parentNorm.includes('FERIAS')) {
+            // Verificação Robusta de Rendimentos (Varre todo o caminho e nome do arquivo)
+            const isRendimentos = fullPathNorm.includes('RENDIMENTOS') || 
+                                 fullPathNorm.includes('DIRF') || 
+                                 fullPathNorm.includes('INFORME') || 
+                                 fullPathNorm.includes('COMPROVANTE');
+
+            if (isRendimentos) {
+              month = '16';
+              category = 'rendimentos';
+              const yMatch = fullPathNorm.match(/(\d{4})/);
+              if (yMatch) year = yMatch[1];
+            } else if (fullPathNorm.includes('FERIAS')) {
               month = '15';
-              const yMatch = entry.name.match(/(\d{4})/) || (pathParts.join('/').match(/(\d{4})/)) || entry.name.match(/(\d{4})/);
+              category = 'ferias';
+              const yMatch = fullPathNorm.match(/(\d{4})/);
               if (yMatch) year = yMatch[1];
-            } else if ((folderNorm.includes('13') || parentNorm.includes('13')) && (folderNorm.includes('1ª') || folderNorm.includes('1A') || parentNorm.includes('1ª') || parentNorm.includes('1A'))) {
+            } else if (fullPathNorm.includes('13') && (fullPathNorm.includes('1ª') || fullPathNorm.includes('1A') || fullPathNorm.includes('1 PARC'))) {
               month = '13';
-              const yMatch = entry.name.match(/(\d{4})/) || (pathParts.join('/').match(/(\d{4})/)) || entry.name.match(/(\d{4})/);
+              category = '13_salario_1';
+              const yMatch = fullPathNorm.match(/(\d{4})/);
               if (yMatch) year = yMatch[1];
-            } else if ((folderNorm.includes('13') || parentNorm.includes('13')) && (folderNorm.includes('2ª') || folderNorm.includes('2A') || parentNorm.includes('2ª') || parentNorm.includes('2A'))) {
+            } else if (fullPathNorm.includes('13') && (fullPathNorm.includes('2ª') || fullPathNorm.includes('2A') || fullPathNorm.includes('2 PARC'))) {
               month = '14';
-              const yMatch = entry.name.match(/(\d{4})/) || (pathParts.join('/').match(/(\d{4})/)) || entry.name.match(/(\d{4})/);
+              category = '13_salario_2';
+              const yMatch = fullPathNorm.match(/(\d{4})/);
               if (yMatch) year = yMatch[1];
             } else {
-              const folderMatch = entry.name.match(/(\d{2})-(\d{4})/) || (pathParts.length > 0 ? pathParts[pathParts.length-1].match(/(\d{2})-(\d{4})/) : null);
+              // Lógica padrão para Holerites Mensais
+              const folderMatch = fullPathNorm.match(/(\d{2})[-/](\d{4})/) || fullPathNorm.match(/(\d{2})_(\d{4})/) || fullPathNorm.match(/(\d{2})\.(\d{4})/);
               if (folderMatch) {
                 month = folderMatch[1];
                 year = folderMatch[2];
-              } else if (pathParts.length > 0) {
-                const lastFolder = pathParts[pathParts.length-1];
-                if (/^\d{4}$/.test(lastFolder)) year = lastFolder;
               } else {
-                 const yMatch = entry.name.match(/(\d{4})/);
-                 if (yMatch) year = yMatch[1];
+                // Tenta buscar apenas o ano se não achou o padrão MM-AAAA
+                const yMatch = fullPathNorm.match(/(\d{4})/);
+                if (yMatch) year = yMatch[1];
               }
             }
-            filesToUpload.push({ handle: entry as FileSystemFileHandle, path: `${currentPath}${entry.name}`, year, month });
+            filesToUpload.push({ handle: entry as FileSystemFileHandle, path: `${currentPath}${entry.name}`, year, month, category });
           }
         }
       };
 
-      await scan(handle);
+      await scan(handle, handle.name + '/');
       setSyncProgress({ current: 0, total: filesToUpload.length, status: 'Preparando upload...' });
       
       let count = 0;
@@ -621,34 +746,40 @@ export default function SuperAdminConsole() {
           continue;
         }
 
-        // Verifica se já existe para decidir o log
-        const { data: existingDoc } = await supabase
+        // PADRONIZAÇÃO E ATUALIZAÇÃO (Batch)
+        const cleanCpf = employee.cpf.replace(/\D/g, '');
+        const formattedCpf = employee.cpf;
+
+        const { data: existing } = await supabase
           .from('documents')
           .select('id')
-          .eq('owner_cpf', employee.cpf)
           .eq('year', item.year)
           .eq('month', item.month)
-          .maybeSingle();
+          .or(`owner_cpf.eq.${cleanCpf},owner_cpf.eq."${formattedCpf}"`);
 
-        const { error: dbErr } = await supabase
-          .from('documents')
-          .upsert({
-            owner_cpf: employee.cpf,
-            year: item.year,
-            month: item.month,
-            filename: normalizedFileName,
-            file_path: cloudPath,
-            size: file.size // Armazena o tamanho real do arquivo
-          });
+        const docData: any = {
+          owner_cpf: employee.cpf, // Usar o CPF original para bater com a chave estrangeira
+          year: item.year,
+          month: item.month,
+          filename: normalizedFileName,
+          file_path: cloudPath,
+          size: file.size,
+          category: item.category
+        };
+
+        let dbErr = null;
+        if (existing && existing.length > 0) {
+          const { error } = await supabase.from('documents').update(docData).eq('id', existing[0].id);
+          dbErr = error;
+        } else {
+          const { error } = await supabase.from('documents').insert(docData);
+          dbErr = error;
+        }
 
         if (dbErr) {
           addLogToHistory('error', `Erro Banco: ${dbErr.message}`);
         } else {
-          if (existingDoc) {
-            addLogToHistory('update', `Atualizado: ${employee.name} (${item.month}/${item.year})`);
-          } else {
-            addLogToHistory('success', `Sucesso: ${employee.name} (${item.month}/${item.year})`);
-          }
+          addLogToHistory('success', `Sucesso: ${employee.name} (${item.month}/${item.year})`);
         }
 
         setSyncProgress(prev => ({ ...prev, current: count }));
@@ -693,7 +824,9 @@ export default function SuperAdminConsole() {
         </button>
         <div>
           <h2 className="text-4xl font-extrabold font-headline text-on-surface tracking-tight">Console de Desenvolvedor</h2>
-          <p className="text-secondary font-body text-lg">Gestão centralizada de privilégios e sincronização em nuvem.</p>
+          <p className="text-secondary font-body text-lg flex items-center gap-3">
+            Gestão centralizada de privilégios e sincronização em nuvem.
+          </p>
         </div>
       </div>
 
@@ -943,7 +1076,9 @@ export default function SuperAdminConsole() {
           <div className="flex items-center justify-between border-b border-surface-container-high pb-4">
             <div className="flex items-center gap-3">
               <CloudCog className="w-5 h-5 text-primary" />
-              <h3 className="text-xl font-bold text-on-surface">Sincronização Cloud (Importação em Lote)</h3>
+              <h3 className="text-xl font-bold text-on-surface flex items-center gap-3">
+                Sincronização Cloud (Importação em Lote)
+              </h3>
             </div>
             {isSyncing && (
                 <div className="flex items-center gap-2 text-primary font-bold animate-pulse text-xs">

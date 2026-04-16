@@ -15,10 +15,11 @@ import {
   CloudCog,
   Loader2,
   FileUp,
-  History
+  History,
+  Download
 } from 'lucide-react';
 
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
 import { supabase } from '@/src/lib/supabase';
@@ -57,6 +58,11 @@ export default function EmployeeRegistry() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [syncLogs, setSyncLogs] = useState<{ type: 'info' | 'error' | 'success', msg: string }[]>([]);
+  const [syncReferenceYear, setSyncReferenceYear] = useState(new Date().getFullYear().toString());
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingEmployee, setEditingEmployee] = useState<any>(null);
+  const [editForm, setEditForm] = useState({ name: '', cpf: '' });
+  
   const [currentUser] = useState(() => {
     try {
       return JSON.parse(localStorage.getItem('currentUser') || '{}');
@@ -132,8 +138,8 @@ export default function EmployeeRegistry() {
     const newStatus = currentStatus === 'Ativo' ? 'Inativo' : 'Ativo';
     try {
       const { error } = await supabase
-        .from('Funcionários')
-        .update({ Status: newStatus })
+        .from('employees')
+        .update({ status: newStatus })
         .eq('id', empId);
       
       if (error) throw error;
@@ -144,6 +150,91 @@ export default function EmployeeRegistry() {
     } catch (err) {
       console.error('Erro ao alternar status:', err);
     }
+  };
+
+  const handleEditEmployee = (emp: any) => {
+    setEditingEmployee(emp);
+    setEditForm({ name: emp.name, cpf: emp.cpf });
+    setIsEditModalOpen(true);
+  };
+
+  const saveEmployeeEdit = async () => {
+    if (!editingEmployee) return;
+    
+    const nameChanged = editForm.name !== editingEmployee.name;
+    const cpfChanged = editForm.cpf !== editingEmployee.cpf;
+
+    if (!nameChanged && !cpfChanged) {
+      setIsEditModalOpen(false);
+      return;
+    }
+
+    try {
+      if (cpfChanged) {
+        // 1. Atualizar documentos vinculados ao CPF antigo para não perder histórico
+        const { error: docError } = await supabase
+          .from('documents')
+          .update({ owner_cpf: editForm.cpf })
+          .eq('owner_cpf', editingEmployee.cpf);
+        
+        if (docError) throw new Error('Erro ao atualizar documentos: ' + docError.message);
+      }
+
+      // 2. Atualizar o funcionário
+      const { error: empError } = await supabase
+        .from('employees')
+        .update({ name: editForm.name, cpf: editForm.cpf })
+        .eq('id', editingEmployee.id);
+
+      if (empError) throw empError;
+
+      setEmployeesList(prev => prev.map(e => e.id === editingEmployee.id ? { ...e, name: editForm.name, cpf: editForm.cpf } : e));
+      setIsEditModalOpen(false);
+      alert('Cadastro atualizado com sucesso!');
+    } catch (err: any) {
+      alert('Erro na atualização: ' + err.message);
+    }
+  };
+
+  const handleResetPassword = async (emp: any) => {
+    const confirm = window.confirm(`Deseja resetar a senha de ${emp.name}? A nova senha será o próprio CPF.`);
+    if (!confirm) return;
+    
+    alert('Funcionalidade de reset de senha via Admin sendo integrada ao AuthService...');
+  };
+
+  const handleExportCSV = () => {
+    if (employeesList.length === 0) {
+      alert('Não há funcionários para exportar.');
+      return;
+    }
+
+    // Cabeçalho do CSV
+    const headers = ['Nome', 'CPF', 'Cargo', 'Status'];
+    
+    // Mapeia os dados dos funcionários
+    const rows = employeesList.map(emp => [
+      `"${emp.name}"`,
+      `"${emp.cpf}"`,
+      `"${emp.role || 'Colaborador'}"`,
+      `"${emp.status}"`
+    ]);
+
+    // Une cabeçalho e linhas
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(r => r.join(';'))
+    ].join('\n');
+
+    // Cria o Blob e dispara o download (UTF-8 com BOM para Excel identificar acentos)
+    const blob = new Blob(["\ufeff" + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `lista_funcionarios_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -234,28 +325,60 @@ export default function EmployeeRegistry() {
       };
       
       const scan = async (dirHandle: FileSystemDirectoryHandle, currentPath: string = '') => {
+        const normalize = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+        
         // @ts-ignore
         for await (const entry of dirHandle.values()) {
           if (entry.kind === 'directory') {
             await scan(entry, `${currentPath}${entry.name}/`);
           } else if (entry.kind === 'file' && entry.name.toLowerCase().endsWith('.pdf')) {
-            const pathParts = currentPath.split('/').filter(Boolean);
-            let year = '2024';
+            const fullPathNorm = normalize(currentPath + entry.name);
+            
+            let year = syncReferenceYear;
             let month = '01';
-            const folderMatch = entry.name.match(/(\d{2})-(\d{4})/) || (pathParts.length > 0 ? pathParts[pathParts.length-1].match(/(\d{2})-(\d{4})/) : null);
-            if (folderMatch) {
-              month = folderMatch[1];
-              year = folderMatch[2];
-            } else if (pathParts.length > 0) {
-              const lastFolder = pathParts[pathParts.length-1];
-              if (/^\d{4}$/.test(lastFolder)) year = lastFolder;
+            let category = 'holerite';
+
+            const isRendimentos = fullPathNorm.includes('RENDIMENTOS') || 
+                                 fullPathNorm.includes('DIRF') || 
+                                 fullPathNorm.includes('INFORME') || 
+                                 fullPathNorm.includes('COMPROVANTE');
+
+            if (isRendimentos) {
+              month = '16';
+              category = 'rendimentos';
+              const yMatch = fullPathNorm.match(/(\d{4})/);
+              if (yMatch) year = yMatch[1];
+            } else if (fullPathNorm.includes('FERIAS')) {
+              month = '15';
+              category = 'ferias';
+              const yMatch = fullPathNorm.match(/(\d{4})/);
+              if (yMatch) year = yMatch[1];
+            } else if (fullPathNorm.includes('13') && (fullPathNorm.includes('1ª') || fullPathNorm.includes('1A') || fullPathNorm.includes('1 PARC'))) {
+              month = '13';
+              category = '13_salario_1';
+              const yMatch = fullPathNorm.match(/(\d{4})/);
+              if (yMatch) year = yMatch[1];
+            } else if (fullPathNorm.includes('13') && (fullPathNorm.includes('2ª') || fullPathNorm.includes('2A') || fullPathNorm.includes('2 PARC'))) {
+              month = '14';
+              category = '13_salario_2';
+              const yMatch = fullPathNorm.match(/(\d{4})/);
+              if (yMatch) year = yMatch[1];
+            } else {
+              const folderMatch = fullPathNorm.match(/(\d{2})[-/](\d{4})/) || fullPathNorm.match(/(\d{2})_(\d{4})/) || fullPathNorm.match(/(\d{2})\.(\d{4})/);
+              if (folderMatch) {
+                month = folderMatch[1];
+                year = folderMatch[2];
+              } else {
+                const yMatch = fullPathNorm.match(/(\d{4})/);
+                if (yMatch) year = yMatch[1];
+              }
             }
-            filesToUpload.push({ handle: entry as FileSystemFileHandle, path: `${currentPath}${entry.name}`, year, month });
+            filesToUpload.push({ handle: entry as FileSystemFileHandle, path: `${currentPath}${entry.name}`, year, month, category });
           }
         }
       };
 
-      await scan(handle);
+      await scan(handle, handle.name + '/');
       setSyncProgress({ current: 0, total: filesToUpload.length, status: 'Preparando upload...' });
       
       let count = 0;
@@ -314,33 +437,35 @@ export default function EmployeeRegistry() {
           continue;
         }
 
-        // Verifica se já existe para decidir o log
-        const { data: existingDoc } = await supabase
+        // REGRA DE ARQUIVO UNICO: Limpeza por ID antes de Upsert
+        const { data: conflicts } = await supabase
           .from('documents')
           .select('id')
           .eq('owner_cpf', employee.cpf)
           .eq('year', item.year)
-          .eq('month', item.month)
-          .maybeSingle();
+          .eq('month', item.month);
+
+        if (conflicts && conflicts.length > 0) {
+          for (const conflict of conflicts) {
+            await supabase.from('documents').delete().eq('id', conflict.id);
+          }
+        }
 
         const { error: dbErr } = await supabase
           .from('documents')
-          .upsert({
+          .insert({
             owner_cpf: employee.cpf,
             year: item.year,
             month: item.month,
             filename: normalizedFileName,
-            file_path: cloudPath
+            file_path: cloudPath,
+            category: item.category
           });
 
         if (dbErr) {
           addLog('error', `Erro Banco: ${dbErr.message}`);
         } else {
-          if (existingDoc) {
-            addLog('update', `Atualizado: ${employee.name} (${item.month}/${item.year})`);
-          } else {
-            addLog('success', `Sucesso: ${employee.name} (${item.month}/${item.year})`);
-          }
+          addLog('success', `Sucesso: ${employee.name} (${item.month}/${item.year})`);
         }
 
         setSyncProgress(prev => ({ ...prev, current: count }));
@@ -401,6 +526,13 @@ export default function EmployeeRegistry() {
           >
             <Upload className="w-5 h-5" />
             <span>Importar CSV</span>
+          </button>
+          <button 
+            onClick={handleExportCSV}
+            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-full font-bold hover:bg-slate-50 active:scale-95 transition-all shadow-sm"
+          >
+            <Download className="w-5 h-5" />
+            <span>Exportar CSV</span>
           </button>
           <button className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-bold hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-primary/20">
             <Plus className="w-5 h-5" />
@@ -474,10 +606,16 @@ export default function EmployeeRegistry() {
                         </div>
                       ) : !deleteStep[emp.id] ? (
                         <>
-                          <button className="p-2 rounded-full hover:bg-white text-slate-400 hover:text-blue-900 transition-colors shadow-sm" title="Editar">
+                          <button 
+                            onClick={() => handleEditEmployee(emp)}
+                            className="p-2 rounded-full hover:bg-white text-slate-400 hover:text-blue-900 transition-colors shadow-sm" title="Editar"
+                          >
                             <Edit2 className="w-4 h-4" />
                           </button>
-                          <button className="p-2 rounded-full hover:bg-white text-slate-400 hover:text-blue-900 transition-colors shadow-sm" title="Senha">
+                          <button 
+                            onClick={() => handleResetPassword(emp)}
+                            className="p-2 rounded-full hover:bg-white text-slate-400 hover:text-blue-900 transition-colors shadow-sm" title="Senha"
+                          >
                             <Lock className="w-4 h-4" />
                           </button>
                           {emp.status === 'Ativo' ? (
@@ -552,8 +690,19 @@ export default function EmployeeRegistry() {
               <div className="bg-primary/5 p-4 rounded-2xl border border-primary/10">
                   <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-1">Dica de Organização</p>
                   <p className="text-[10px] text-secondary">
-                      O sistema busca pastas no formato "MM-AAAA" e arquivos que contenham o nome ou CPF do funcionário.
+                      O sistema busca pastas no formato "MM-AAAA" e palavras como "DIRE/RENDIMENTOS" no caminho dos arquivos.
                   </p>
+              </div>
+              <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-secondary uppercase tracking-widest">Ano de Referência (Obrigatório p/ Férias/13º)</label>
+                  <input 
+                      type="text" 
+                      value={syncReferenceYear}
+                      onChange={e => setSyncReferenceYear(e.target.value)}
+                      className="w-full bg-white border border-surface-container-high rounded-xl py-2 px-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                      placeholder="Ex: 2026"
+                  />
+                  <p className="text-[10px] text-secondary italic">Se o robô não encontrar o ano escrito na pasta, ele usará este valor.</p>
               </div>
               <button
                   disabled={isSyncing}
@@ -623,6 +772,71 @@ export default function EmployeeRegistry() {
         </div>
       </section>
 
+      {/* Modal de Edição */}
+      <AnimatePresence>
+        {isEditModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsEditModalOpen(false)}
+              className="absolute inset-0 bg-primary/20 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100"
+            >
+              <div className="p-8 space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-xl font-headline font-bold text-on-surface">Editar Cadastro</h3>
+                  <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
+                    <X className="w-5 h-5 text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-secondary uppercase tracking-widest">Nome Completo</label>
+                    <input 
+                      type="text" 
+                      value={editForm.name}
+                      onChange={e => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-secondary uppercase tracking-widest">Identificação (CPF)</label>
+                    <input 
+                      type="text" 
+                      value={editForm.cpf}
+                      onChange={e => setEditForm(prev => ({ ...prev, cpf: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <button 
+                    onClick={() => setIsEditModalOpen(false)}
+                    className="flex-1 py-3 bg-slate-100 text-slate-600 rounded-xl font-bold text-xs hover:bg-slate-200 transition-all"
+                  >
+                    Cancelar
+                  </button>
+                  <button 
+                    onClick={saveEmployeeEdit}
+                    className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
+                  >
+                    Salvar Alterações
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

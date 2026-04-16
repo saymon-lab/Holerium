@@ -32,7 +32,7 @@ export default function DocumentViewer() {
     } catch { return {}; }
   });
 
-  const [viewState, setViewState] = useState<'years' | 'months' | 'document'>(() => {
+  const [viewState, setViewState] = useState<'years' | 'months' | 'document' | 'rendimentos'>(() => {
     return (sessionStorage.getItem('doc_viewState') as any) || 'years';
   });
   const [selectedYear, setSelectedYear] = useState<string | null>(() => {
@@ -40,6 +40,12 @@ export default function DocumentViewer() {
   });
   const [selectedMonth, setSelectedMonth] = useState<string | null>(() => {
     return sessionStorage.getItem('doc_selectedMonth');
+  });
+  const [selectedDocument, setSelectedDocument] = useState<any | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('doc_selectedDocument');
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
   });
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -50,12 +56,25 @@ export default function DocumentViewer() {
   const months = [
     'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 
     'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro',
-    '13º Salário (1ª Parc.)', '13º Salário (2ª Parc.)', 'Férias'
+    '13º Salário (1ª Parc.)', '13º Salário (2ª Parc.)', 'Férias', 'Comprovante de Rendimentos'
   ];
   const [years, setYears] = useState<string[]>([]);
 
   const userName = currentUser.name || "Usuário não identificado";
   const userCpf = currentUser.cpf || "000.000.000-00";
+
+  const recordLog = async (status: 'sucesso' | 'erro', detail: string) => {
+    try {
+      await supabase.from('access_logs').insert([{
+        user: userName,
+        role: currentUser.role || 'Colaborador',
+        status,
+        detail
+      }]);
+    } catch (err) {
+      console.error('Falha ao registrar log de visualização:', err);
+    }
+  };
 
   // 1. Carregar dados da nuvem ao iniciar
   useEffect(() => {
@@ -78,9 +97,9 @@ export default function DocumentViewer() {
       console.log('Documentos encontrados:', documentsData);
       setCloudDocuments(documentsData || []);
 
-      // Extrair anos únicos
+      // Extrair anos únicos (APENAS PARA HOLERITES, EXCLUI RENDIMENTOS)
       const foundYears = new Set<string>();
-      documentsData?.forEach(doc => foundYears.add(doc.year));
+      documentsData?.filter(doc => String(doc.month) !== '16' && doc.category !== 'rendimentos').forEach(doc => foundYears.add(doc.year));
       const sortedYears = Array.from(foundYears).sort((a, b) => b.localeCompare(a));
       setYears(sortedYears);
 
@@ -100,15 +119,25 @@ export default function DocumentViewer() {
 
     if (selectedMonth) sessionStorage.setItem('doc_selectedMonth', selectedMonth);
     else sessionStorage.removeItem('doc_selectedMonth');
-  }, [viewState, selectedYear, selectedMonth]);
+
+    if (selectedDocument) sessionStorage.setItem('doc_selectedDocument', JSON.stringify(selectedDocument));
+    else sessionStorage.removeItem('doc_selectedDocument');
+  }, [viewState, selectedYear, selectedMonth, selectedDocument]);
 
   // Resetar estado quando recebe sinal do Sidebar
   useEffect(() => {
     if (location.state && (location.state as any).reset) {
-      setViewState('years');
-      setSelectedYear(null);
-      setSelectedMonth(null);
       setPdfUrl(null);
+      
+      if ((location.state as any).rendimentos) {
+        setViewState('rendimentos');
+      } else {
+        setViewState('years');
+        setSelectedYear(null);
+        setSelectedMonth(null);
+        setSelectedDocument(null);
+      }
+      
       // Limpa o estado para não resetar em cada render
       window.history.replaceState({}, document.title);
     }
@@ -118,7 +147,7 @@ export default function DocumentViewer() {
   useEffect(() => {
     if (viewState === 'months' && selectedYear && cloudDocuments.length > 0) {
       const monthsInYear = cloudDocuments
-        .filter(doc => String(doc.year) === String(selectedYear))
+        .filter(doc => String(doc.year) === String(selectedYear) && String(doc.month) !== '16' && doc.category !== 'rendimentos')
         .map(doc => {
           const mIndex = parseInt(doc.month) - 1;
           return months[mIndex];
@@ -143,8 +172,12 @@ export default function DocumentViewer() {
     setLoading(true);
     setDocError(null);
     try {
-      const monthNum = (months.indexOf(selectedMonth!) + 1).toString().padStart(2, '0');
-      const doc = cloudDocuments.find(d => String(d.year) === String(selectedYear) && String(d.month) === String(monthNum));
+      let doc = selectedDocument;
+      
+      if (!doc && selectedYear && selectedMonth) {
+        const monthNum = (months.indexOf(selectedMonth!) + 1).toString().padStart(2, '0');
+        doc = cloudDocuments.find(d => String(d.year) === String(selectedYear) && String(d.month) === String(monthNum));
+      }
 
       if (!doc) throw new Error('Documento não encontrado na sua conta. Entre em contato com o RH.');
 
@@ -154,6 +187,9 @@ export default function DocumentViewer() {
 
       if (storageErr) throw storageErr;
       setPdfUrl(data.signedUrl);
+      
+      // Registrar log de visualização bem-sucedida
+      recordLog('sucesso', `Visualizou: ${selectedMonth}/${selectedYear}`);
 
     } catch (err: any) {
       setDocError(err.message);
@@ -167,13 +203,14 @@ export default function DocumentViewer() {
       <div className="flex items-center gap-5 mb-10">
         <button
           onClick={() => navigate('/dashboard')}
-          className="w-14 h-14 flex items-center justify-center rounded-full bg-white hover:bg-surface-container transition-colors text-primary shadow-sm active:scale-95 border border-surface-container-high"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-50 transition-all text-primary shadow-sm active:scale-95 border border-slate-100 group shrink-0"
         >
-          <ArrowLeft className="w-6 h-6" />
+          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-bold tracking-tight">Voltar</span>
         </button>
         <div className="space-y-2">
-          <h2 className="text-4xl md:text-5xl font-extrabold font-headline text-on-surface tracking-tight">Meus Documentos</h2>
-          <p className="text-secondary font-body max-w-2xl text-lg">Acesse seus comprovantes de pagamento sincronizados na nuvem.</p>
+          <h2 className="text-4xl md:text-5xl font-extrabold font-headline text-on-surface tracking-tight">Holerites</h2>
+          <p className="text-secondary font-body max-w-2xl text-lg">Acesse seus comprovantes de pagamento mensais sincronizados.</p>
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
@@ -198,14 +235,67 @@ export default function DocumentViewer() {
     </div>
   );
 
+  const renderRendimentos = () => (
+    <div className="animate-fade-in space-y-8">
+      <div className="flex items-center gap-5 mb-10">
+        <button
+          onClick={() => navigate('/dashboard')}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-50 transition-all text-primary shadow-sm active:scale-95 border border-slate-100 group shrink-0"
+        >
+          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-bold tracking-tight">Voltar</span>
+        </button>
+        <div className="space-y-1 text-left">
+          <h2 className="text-4xl font-extrabold font-headline text-[#0B1F5B] tracking-tight">Meus Rendimentos</h2>
+          <p className="text-slate-500 font-medium text-lg italic">Informes Anuais e DIRF</p>
+        </div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        {cloudDocuments.filter(d => String(d.month) === '16' || d.category === 'rendimentos').length > 0 ? (
+          cloudDocuments.filter(d => String(d.month) === '16' || d.category === 'rendimentos').sort((a,b) => b.year - a.year).map(doc => (
+            <motion.button
+              whileHover={{ y: -4 }}
+              key={doc.id}
+              onClick={() => {
+                setSelectedYear(doc.year);
+                setSelectedMonth('Comprovante de Rendimentos');
+                setSelectedDocument(doc);
+                setViewState('document');
+              }}
+              className="bg-white p-7 rounded-3xl border border-slate-100 shadow-sm hover:shadow-xl transition-all flex items-center gap-5 text-left group"
+            >
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-600 group-hover:text-white transition-all shadow-sm">
+                <FileText className="w-7 h-7" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <span className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{doc.year}</span>
+                <span className="block font-black text-[#0B1F5B] text-lg leading-tight mb-1 truncate">{doc.filename || 'Informe Anual'}</span>
+                <span className="flex items-center gap-1.5 text-[10px] font-bold text-emerald-600 uppercase tracking-tight">
+                  <ShieldCheck className="w-3 h-3" />
+                  Disponível para Visualização
+                </span>
+              </div>
+            </motion.button>
+          ))
+        ) : (
+          <div className="col-span-full py-20 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-center space-y-4">
+            <FileText className="w-12 h-12 text-slate-300" />
+            <p className="text-slate-500 font-medium font-body">Nenhum informe de rendimentos encontrado até o momento.</p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   const renderMonths = () => (
     <div className="animate-fade-in space-y-8">
       <div className="flex items-center gap-5 mb-10">
         <button
           onClick={() => { setViewState('years'); setSelectedYear(null); }}
-          className="w-14 h-14 flex items-center justify-center rounded-full bg-white hover:bg-surface-container transition-colors text-primary shadow-sm active:scale-95 border border-surface-container-high"
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-50 transition-all text-primary shadow-sm active:scale-95 border border-slate-100 group shrink-0"
         >
-          <ArrowLeft className="w-6 h-6" />
+          <ArrowLeft className="w-5 h-5 group-hover:-translate-x-1 transition-transform" />
+          <span className="text-sm font-bold tracking-tight">Voltar</span>
         </button>
         <div>
           <h2 className="text-4xl font-extrabold font-headline text-on-surface tracking-tight">Competência {selectedYear}</h2>
@@ -213,7 +303,7 @@ export default function DocumentViewer() {
         </div>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-        {months.map(month => {
+        {months.filter(m => m !== 'Comprovante de Rendimentos').map(month => {
           const isAvailable = availableMonths.includes(month);
           return (
             <motion.button
@@ -222,7 +312,12 @@ export default function DocumentViewer() {
               key={month}
               onClick={() => {
                 if (isAvailable) {
+                  const mIndex = months.indexOf(month) + 1;
+                  const monthNum = mIndex.toString().padStart(2, '0');
+                  const doc = cloudDocuments.find(d => String(d.year) === String(selectedYear) && String(d.month) === monthNum);
+                  
                   setSelectedMonth(month);
+                  setSelectedDocument(doc || null);
                   setViewState('document');
                 }
               }}
@@ -262,14 +357,22 @@ export default function DocumentViewer() {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setViewState('months')}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-primary active:scale-95"
+            onClick={() => {
+              if (selectedMonth === 'Comprovante de Rendimentos') {
+                setViewState('rendimentos');
+              } else {
+                setViewState('months');
+              }
+              setSelectedDocument(null);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-white hover:bg-slate-50 transition-all text-primary shadow-sm active:scale-95 border border-slate-100 group shrink-0"
           >
-            <ArrowLeft className="w-5 h-5" />
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span className="text-xs font-bold tracking-tight">Voltar</span>
           </button>
           <div>
             <h2 className="font-headline font-bold text-2xl tracking-tight text-on-surface">
-              Holerite - {selectedMonth} {selectedYear}
+              {selectedDocument?.filename?.replace(/\.pdf$/i, '') || `${selectedMonth} ${selectedYear}`}
             </h2>
             <div className="flex items-center gap-2 mt-1">
               <span className="bg-tertiary-fixed text-on-tertiary-fixed-variant px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider">Confidencial</span>
@@ -349,6 +452,7 @@ export default function DocumentViewer() {
     <div className="p-10 flex-1 flex flex-col">
       {viewState === 'years' && renderYears()}
       {viewState === 'months' && renderMonths()}
+      {viewState === 'rendimentos' && renderRendimentos()}
       {viewState === 'document' && renderDocument()}
     </div>
   );

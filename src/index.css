@@ -5,30 +5,35 @@
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-headline: "Manrope", sans-serif;
 
-  --color-primary: #000666;
-  --color-primary-container: #1a237e;
+  --color-primary: #000422;
   --color-on-primary: #ffffff;
-  
-  --color-secondary: #4c616c;
+  --color-primary-container: #0d1b4c;
+  --color-on-primary-container: #7884bb;
+
+  --color-secondary: #595d73;
   --color-on-secondary: #ffffff;
-  
-  --color-tertiary: #002015;
-  --color-tertiary-fixed: #a6f2d1;
-  --color-on-tertiary-fixed-variant: #00513b;
-  
-  --color-surface: #f4faff;
-  --color-on-surface: #0d1e25;
-  --color-on-surface-variant: #454652;
-  
-  --color-surface-container: #dff1fb;
-  --color-surface-container-low: #e7f6ff;
+  --color-secondary-container: #dee1fc;
+  --color-on-secondary-container: #5f637a;
+
+  --color-tertiary: #130300;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #3b1300;
+
+  --color-surface: #f8f9fa;
+  --color-on-surface: #191c1d;
+  --color-on-surface-variant: #45464f;
+  --color-background: #f8f9fa;
+  --color-on-background: #191c1d;
+
+  --color-surface-container: #edeeef;
+  --color-surface-container-low: #f3f4f5;
   --color-surface-container-lowest: #ffffff;
-  --color-surface-container-high: #d9ebf5;
-  --color-surface-container-highest: #d4e5ef;
-  
-  --color-outline: #767683;
-  --color-outline-variant: #c6c5d4;
-  
+  --color-surface-container-high: #e7e8e9;
+  --color-surface-container-highest: #e1e3e4;
+
+  --color-outline: #767680;
+  --color-outline-variant: #c6c5d0;
+
   --color-error: #ba1a1a;
   --color-error-container: #ffdad6;
   --color-on-error-container: #93000a;
@@ -42,8 +47,13 @@
   body {
     @apply bg-surface text-on-surface font-sans antialiased;
   }
-  
-  h1, h2, h3, h4, h5, h6 {
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     @apply font-headline;
   }
 }
@@ -62,13 +72,25 @@
 }
 
 @keyframes fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes slide-up {
-  from { transform: translateY(20px); opacity: 0; }
-  to { transform: translateY(0); opacity: 1; }
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
 }
 
 .animate-fade-in {

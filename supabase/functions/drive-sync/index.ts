@@ -47,9 +47,13 @@ serve(async (req) => {
 
     for (const folder of rootChildren) {
       const isMonth = folder.name.match(/(\d{2})[-/](\d{4})/);
+      const isSpecial = folder.name.toUpperCase().includes('FERIAS') || 
+                        folder.name.includes('13-') || 
+                        folder.name.toUpperCase().includes('DIRF') || 
+                        folder.name.toUpperCase().includes('RENDIMENTOS');
       const isYearOnly = folder.name.match(/^20\d{2}$/);
 
-      if (isMonth) {
+      if (isMonth || isSpecial) {
         if (!targetYearLimit || folder.name.includes(targetYearLimit)) {
           monthFolders.push(folder);
         }
@@ -61,8 +65,12 @@ serve(async (req) => {
         const subFolders = await listFolders(folder.id, token);
         for (const sub of subFolders) {
           const isMonthSub = sub.name.match(/(\d{2})[-/](\d{4})/);
-          const isSpecial = sub.name.toUpperCase().includes('FERIAS') || sub.name.includes('13-');
-          if (isMonthSub || isSpecial) {
+          const subUpper = sub.name.toUpperCase();
+          const isSpecialSub = subUpper.includes('FERIAS') || 
+                               subUpper.includes('13-') || 
+                               subUpper.includes('DIRF') || 
+                               subUpper.includes('RENDIMENTOS');
+          if (isMonthSub || isSpecialSub) {
             monthFolders.push(sub);
           }
         }
@@ -82,26 +90,34 @@ serve(async (req) => {
         break;
       }
 
-      let month = "00";
-      let year = "0000";
+      let category = 'holerite';
       const folderUpper = folder.name.toUpperCase();
       const match = folder.name.match(/(\d{2})[-/](\d{4})/);
       
       if (match) {
         month = match[1];
         year = match[2];
+        category = 'holerite';
       } else if (folderUpper.includes('FERIAS')) {
         month = '15';
+        category = 'ferias';
         year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
       } else if (folderUpper.includes('13') && (folderUpper.includes('1ª') || folderUpper.includes('1A'))) {
         month = '13';
+        category = '13_salario_1';
         year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
       } else if (folderUpper.includes('13') && (folderUpper.includes('2ª') || folderUpper.includes('2A'))) {
         month = '14';
+        category = '13_salario_2';
+        year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
+      } else if (folderUpper.includes('DIRF') || folderUpper.includes('RENDIMENTOS') || folderUpper.includes('INFORME')) {
+        month = '16';
+        category = 'rendimentos';
         year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
       } else {
         year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
         month = "01"; // Fallback
+        category = 'holerite';
       }
 
       console.log(`Sincronizando: ${folder.name}`);
@@ -125,13 +141,34 @@ serve(async (req) => {
           const { error: storageErr } = await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
           if (storageErr) throw storageErr;
 
-          await supabase.from('documents').upsert({
-            owner_cpf: employee.cpf,
+          // PADRONIZAÇÃO E ATUALIZAÇÃO DIRETA NO ROBÔ (PARA EVITAR PROBLEMAS DE DELETE)
+          const cleanCpf = employee.cpf.replace(/\D/g, '');
+          const formattedCpf = employee.cpf;
+
+          // 1. Busca para ver se já existe
+          const { data: existing } = await supabase
+            .from('documents')
+            .select('id')
+            .eq('year', year)
+            .eq('month', month)
+            .or(`owner_cpf.eq.${cleanCpf},owner_cpf.eq."${formattedCpf}"`);
+
+          const docData = {
+            owner_cpf: employee.cpf, // Usar o CPF original para bater com a chave estrangeira
             year,
             month,
             filename: normalizedName,
-            file_path: cloudPath
-          });
+            file_path: cloudPath,
+            category: category
+          };
+
+          if (existing && existing.length > 0) {
+            // 2. Se existe, atualiza pelo ID (Evita conflito de chave única)
+            await supabase.from('documents').update(docData).eq('id', existing[0].id);
+          } else {
+            // 3. Se não existe, insere
+            await supabase.from('documents').insert(docData);
+          }
 
           totalSynced++;
           console.log(`  [OK] ${employee.name}`);

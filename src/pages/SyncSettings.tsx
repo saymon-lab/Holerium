@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, BadgeAlert, FolderOpen, Save, ArrowLeft, Fingerprint, Trash2 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { Camera, BadgeAlert, FolderOpen, Save, ArrowLeft, Fingerprint, Trash2, X, ZoomIn } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
+import Cropper, { Area, Point } from 'react-easy-crop';
 
 export default function SyncSettings() {
   const navigate = useNavigate();
@@ -12,6 +13,13 @@ export default function SyncSettings() {
     } catch { return {}; }
   });
   const [isRegisteringBio, setIsRegisteringBio] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+
+  // States for Cropping
+  const [imageToCrop, setImageToCrop] = useState<string | null>(null);
+  const [crop, setCrop] = useState<Point>({ x: 0, y: 0 });
+  const [zoom, setZoom] = useState(1);
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
   const [folderPath, setFolderPath] = useState(() => {
     return localStorage.getItem('receiptsFolderPath') || 'Nenhuma pasta vinculada';
@@ -38,35 +46,87 @@ export default function SyncSettings() {
     }
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const createImage = (url: string): Promise<HTMLImageElement> =>
+    new Promise((resolve, reject) => {
+      const image = new Image();
+      image.addEventListener('load', () => resolve(image));
+      image.addEventListener('error', (error) => reject(error));
+      image.setAttribute('crossOrigin', 'anonymous');
+      image.src = url;
+    });
+
+  const getCroppedImg = async (imageSrc: string, pixelCrop: Area): Promise<Blob> => {
+    const image = await createImage(imageSrc);
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+  
+    if (!ctx) throw new Error('Could not get canvas context');
+  
+    canvas.width = pixelCrop.width;
+    canvas.height = pixelCrop.height;
+  
+    ctx.drawImage(
+      image,
+      pixelCrop.x,
+      pixelCrop.y,
+      pixelCrop.width,
+      pixelCrop.height,
+      0,
+      0,
+      pixelCrop.width,
+      pixelCrop.height
+    );
+  
+    return new Promise((resolve) => {
+      canvas.toBlob((blob) => {
+        resolve(blob!);
+      }, 'image/jpeg', 0.9);
+    });
+  };
+
+  const onCropComplete = (_activeArea: Area, pixelArea: Area) => {
+    setCroppedAreaPixels(pixelArea);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Limite de 300 KB (300 * 1024 bytes)
-    const MAX_SIZE = 300 * 1024;
+    // Limite de 2 MB para arquivo original (o corte vai reduzir drasticamente)
+    const MAX_SIZE = 2 * 1024 * 1024;
     if (file.size > MAX_SIZE) {
-      alert(`A imagem é muito grande (${(file.size / 1024).toFixed(1)} KB). Por favor, selecione uma imagem de até 300 KB para economizar espaço no servidor.`);
+      alert(`A imagem original é muito grande. Por favor, escolha outra.`);
       return;
     }
 
+    const reader = new FileReader();
+    reader.addEventListener('load', () => {
+      setImageToCrop(reader.result as string);
+    });
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveCroppedImage = async () => {
+    if (!imageToCrop || !croppedAreaPixels) return;
+
     try {
-      // 1. Upload para o Supabase Storage (Pasta avatars/)
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${currentUser.cpf || 'unknown'}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+      setIsUploading(true);
+      const croppedBlob = await getCroppedImg(imageToCrop, croppedAreaPixels);
+
+      // Upload para o Supabase
+      const fileName = `${currentUser.cpf || 'unknown'}_${Date.now()}.jpg`;
       const filePath = `avatars/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
         .from('receipts')
-        .upload(filePath, file, { upsert: true });
+        .upload(filePath, croppedBlob, { upsert: true });
 
       if (uploadError) throw uploadError;
 
-      // 2. Obter a URL pública
       const { data: { publicUrl } } = supabase.storage
         .from('receipts')
         .getPublicUrl(filePath);
 
-      // 3. Atualizar no banco de dados (tabela employees)
       const { error: dbError } = await supabase
         .from('employees')
         .update({ avatar: publicUrl })
@@ -74,18 +134,18 @@ export default function SyncSettings() {
 
       if (dbError) throw dbError;
 
-      // 4. Atualizar LocalStorage e Estado
       const updatedUser = { ...currentUser, avatar: publicUrl };
       setCurrentUser(updatedUser);
       localStorage.setItem('currentUser', JSON.stringify(updatedUser));
 
-      alert('Foto de perfil atualizada com sucesso!');
-      
-      // Pequeno delay antes do reload para garantir a escrita no Storage
-      setTimeout(() => window.location.reload(), 500);
+      setImageToCrop(null);
+      alert('Foto carregada e recortada com sucesso!');
+      window.location.reload();
     } catch (err: any) {
-      console.error('Erro ao atualizar avatar:', err);
+      console.error('Erro ao salvar foto:', err);
       alert('Erro ao salvar foto: ' + (err.message || 'Erro desconhecido'));
+    } finally {
+      setIsUploading(false);
     }
   };
 
@@ -217,7 +277,7 @@ export default function SyncSettings() {
             type="file" 
             accept="image/*" 
             ref={fileInputRef} 
-            onChange={handleAvatarUpload} 
+            onChange={handleFileSelect} 
             className="hidden" 
           />
         </div>
@@ -314,6 +374,107 @@ export default function SyncSettings() {
           </div>
         </motion.div>
       )}
+      {/* Modal de Recorte de Imagem */}
+      <AnimatePresence>
+        {imageToCrop && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 md:p-10"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-white w-full max-w-xl rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-[90vh] md:h-auto md:aspect-square"
+            >
+              {/* Header do Modal */}
+              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-primary/10 text-primary rounded-xl flex items-center justify-center">
+                    <Camera className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-on-surface">Ajustar Foto</h3>
+                    <p className="text-[10px] text-secondary font-bold uppercase tracking-widest">Enquadre seu rosto no círculo</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setImageToCrop(null)}
+                  className="p-3 hover:bg-slate-100 rounded-full transition-colors text-secondary"
+                >
+                  <X className="w-6 h-6" />
+                </button>
+              </div>
+
+              {/* Área do Cropper */}
+              <div className="flex-1 relative bg-slate-900 overflow-hidden">
+                <Cropper
+                  image={imageToCrop}
+                  crop={crop}
+                  zoom={zoom}
+                  aspect={1}
+                  cropShape="round"
+                  showGrid={false}
+                  onCropChange={setCrop}
+                  onZoomChange={setZoom}
+                  onCropComplete={onCropComplete}
+                />
+              </div>
+
+              {/* Controles do Modal */}
+              <div className="p-8 bg-white border-t border-slate-100 space-y-8 relative z-10">
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-bold text-secondary uppercase tracking-widest">Zoom da Imagem</span>
+                    <span className="text-xs font-bold text-primary">{Math.round(zoom * 100)}%</span>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <ZoomIn className="w-4 h-4 text-slate-400" />
+                    <input
+                      type="range"
+                      value={zoom}
+                      min={1}
+                      max={3}
+                      step={0.1}
+                      aria-labelledby="Zoom"
+                      onChange={(e) => setZoom(Number(e.target.value))}
+                      className="flex-1 h-1.5 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-primary"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => setImageToCrop(null)}
+                    className="flex-1 py-4 px-6 rounded-2xl font-bold text-secondary hover:bg-slate-50 transition-all border border-slate-200"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleSaveCroppedImage}
+                    disabled={isUploading}
+                    className="flex-[2] py-4 px-6 rounded-2xl bg-primary text-white font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:opacity-50 disabled:scale-100"
+                  >
+                    {isUploading ? (
+                      <>
+                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Salvando...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-5 h-5" />
+                        Salvar Foto de Perfil
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

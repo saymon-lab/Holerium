@@ -24,6 +24,7 @@ export default function App() {
           
           {/* Fallbacks */}
           <Route path="/logs" element={<AccessLogs />} />
+        </Route>
         
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
