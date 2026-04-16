@@ -83,21 +83,31 @@ serve(async (req) => {
           const cleanCpf = employee.cpf.replace(/\D/g, '');
           const formattedCpf = employee.cpf;
 
-          const { data: existing } = await supabase.from('documents')
-            .select('id').eq('year', year).eq('month', month).eq('category', category)
-            .or(`owner_cpf.eq."${formattedCpf}",owner_cpf.eq."${cleanCpf}"`).maybeSingle();
+          // Registro no Banco de Dados com Segurança Máxima
+          try {
+            const { data: existing, error: findErr } = await supabase.from('documents')
+              .select('id').eq('year', year).eq('month', month).eq('category', category)
+              .or(`owner_cpf.eq."${formattedCpf}",owner_cpf.eq."${cleanCpf}"`).maybeSingle();
 
-          const docData = { owner_cpf: formattedCpf, year, month, category, filename: normalizedName, file_path: cloudPath };
+            if (findErr) throw new Error(`Query DB falhou: ${findErr.message}`);
 
-          if (existing) {
-            await supabase.from('documents').update(docData).eq('id', existing.id);
-          } else {
-            const { error: insErr } = await supabase.from('documents').insert(docData);
-            if (insErr) {
-              docData.owner_cpf = cleanCpf;
-              await supabase.from('documents').insert(docData);
+            const docData = { owner_cpf: formattedCpf, year, month, category, filename: normalizedName, file_path: cloudPath };
+
+            if (existing && existing.id) {
+              const { error: updErr } = await supabase.from('documents').update(docData).eq('id', existing.id);
+              if (updErr) console.error(`[!] Erro Update: ${updErr.message}`);
+            } else {
+              const { error: insErr } = await supabase.from('documents').insert(docData);
+              if (insErr) {
+                docData.owner_cpf = cleanCpf; // Tenta CPF limpo (backup)
+                const { error: insErr2 } = await supabase.from('documents').insert(docData);
+                if (insErr2) console.error(`[!] Erro Insert: ${insErr2.message}`);
+              }
             }
+          } catch (dbEx) {
+            console.error(`[!] Erro de registro no banco para ${employee.name}:`, dbEx.message);
           }
+
           totalSynced++;
           console.log(`[OK] ${employee.name} (${month}/${year})`);
         } catch (e: any) {
