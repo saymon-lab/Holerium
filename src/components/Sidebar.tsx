@@ -160,7 +160,7 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }: SidebarProps) 
                     sessionStorage.removeItem('doc_selectedYear');
                     navigate('/documents', { state: { reset: true } });
                   } else if (item.label === 'Meus Rendimentos') {
-                    sessionStorage.setItem('doc_viewState', 'rendimentos');
+                    sessionStorage.setItem('doc_viewState', 'rendimentos_years');
                     navigate('/documents', { state: { rendimentos: true, reset: true } });
                   } else {
                     navigate(item.path);

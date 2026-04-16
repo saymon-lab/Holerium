@@ -23,7 +23,7 @@ export default function DocumentViewer() {
     } catch { return {}; }
   });
 
-  const [viewState, setViewState] = useState<'years' | 'months' | 'document' | 'rendimentos'>(() => {
+  const [viewState, setViewState] = useState<'years' | 'months' | 'document' | 'rendimentos' | 'rendimentos_years'>(() => {
     return (sessionStorage.getItem('doc_viewState') as any) || 'years';
   });
   const [selectedYear, setSelectedYear] = useState<string | null>(() => {
@@ -100,7 +100,8 @@ export default function DocumentViewer() {
     const state = location.state as any;
     if (state?.reset) {
       if (state?.rendimentos) {
-        setViewState('rendimentos');
+        setViewState('rendimentos_years');
+        setSelectedYear(null);
       } else {
         setViewState('years');
         setSelectedYear(null);
@@ -191,10 +192,10 @@ export default function DocumentViewer() {
                   <span className={cn("text-[10px] font-bold uppercase", isAvailable ? "text-emerald-600" : "text-slate-400")}>{isAvailable ? "Disponível" : "Indisponível"}</span>
                 </div>
               </motion.button>
-              
+
               {isAvailable && (
-                <a 
-                  href={pdfUrl || '#'} 
+                <a
+                  href={pdfUrl || '#'}
                   download={`${month}-${selectedYear}.pdf`}
                   onClick={(e) => {
                     // Prevenir abertura do documento ao clicar no download
@@ -227,18 +228,18 @@ export default function DocumentViewer() {
   const renderRendimentos = () => (
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10">
-        <button onClick={() => navigate('/dashboard')} className="w-fit flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold shrink-0">
+        <button onClick={() => { setViewState('rendimentos_years'); setSelectedYear(null); }} className="w-fit flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold shrink-0">
           <ArrowLeft className="w-5 h-5" /> Voltar
         </button>
         <div>
-          <h2 className="text-2xl sm:text-5xl font-extrabold text-on-surface leading-tight">Meus Rendimentos</h2>
+          <h2 className="text-2xl sm:text-5xl font-extrabold text-on-surface leading-tight">Rendimentos {selectedYear}</h2>
           <p className="text-secondary text-sm sm:text-lg">Documentos anuais para declaração de IRPF.</p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {cloudDocuments
-          .filter(doc => doc.category === 'rendimentos' || doc.month === '16')
+          .filter(doc => (doc.category === 'rendimentos' || doc.month === '16') && doc.year === String(selectedYear).trim())
           .map((doc, idx) => (
             <motion.button
               key={idx}
@@ -263,7 +264,7 @@ export default function DocumentViewer() {
                   Disponível para Visualização
                 </div>
               </div>
-              <div 
+              <div
                 onClick={(e) => {
                   e.stopPropagation();
                   if (doc?.file_path) {
@@ -296,6 +297,46 @@ export default function DocumentViewer() {
     </div>
   );
 
+  const renderRendimentosYears = () => {
+    const rendYears = new Set<string>();
+    cloudDocuments
+      .filter(doc => (doc.category === 'rendimentos' || doc.month === '16'))
+      .forEach(doc => rendYears.add(doc.year));
+    
+    const sortedYears = Array.from(rendYears).sort((a, b) => b.localeCompare(a));
+
+    return (
+      <div className="space-y-8 animate-fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10">
+          <button onClick={() => navigate('/dashboard')} className="w-fit flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold shrink-0">
+            <ArrowLeft className="w-5 h-5" /> Voltar
+          </button>
+          <div>
+            <h2 className="text-2xl sm:text-5xl font-extrabold text-on-surface leading-tight">Meus Rendimentos</h2>
+            <p className="text-secondary text-sm sm:text-lg">Selecione o ano base para o informe de rendimentos.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+          {sortedYears.map(year => (
+            <motion.button key={year} whileHover={{ y: -5 }} onClick={() => { setSelectedYear(year); setViewState('rendimentos'); }}
+              className="bg-white p-8 rounded-3xl border shadow-sm flex flex-col items-center gap-4 h-56 group transition-all hover:border-blue-500/30">
+              <Folder className="w-20 h-20 text-slate-200 group-hover:text-blue-100 transition-colors" fill="currentColor" />
+              <span className="font-bold text-2xl text-on-surface">Ano {year}</span>
+            </motion.button>
+          ))}
+        </div>
+
+        {sortedYears.length === 0 && !loading && (
+          <div className="flex flex-col items-center justify-center p-20 opacity-50">
+            <ShieldCheck className="w-16 h-16 mb-4 text-slate-300" />
+            <p className="font-bold text-on-surface">Nenhum informe disponível</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderYears = () => (
     <div className="space-y-8 animate-fade-in">
       <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10">
@@ -320,16 +361,23 @@ export default function DocumentViewer() {
     <div className="p-10 flex-1 flex flex-col">
       {viewState === 'years' && renderYears()}
       {viewState === 'months' && renderMonths()}
+      {viewState === 'rendimentos_years' && renderRendimentosYears()}
       {viewState === 'rendimentos' && renderRendimentos()}
       {viewState === 'document' && (
         <div className="flex-1 flex flex-col gap-6">
           <div className="flex items-center justify-between gap-4">
-            <button onClick={() => setViewState('months')} className="w-fit flex items-center gap-2 px-4 py-2 rounded-full bg-white text-primary font-bold shadow-sm active:scale-95 transition-transform">
+            <button onClick={() => {
+               if (selectedMonth === 'Comprovante de Rendimentos') {
+                 setViewState('rendimentos');
+               } else {
+                 setViewState('months');
+               }
+            }} className="w-fit flex items-center gap-2 px-4 py-2 rounded-full bg-white text-primary font-bold shadow-sm active:scale-95 transition-transform">
               <ArrowLeft className="w-4 h-4" /> Voltar
             </button>
             {pdfUrl && (
-              <a 
-                href={pdfUrl} 
+              <a
+                href={pdfUrl}
                 download={`${selectedMonth}-${selectedYear}.pdf`}
                 target="_blank"
                 className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-full font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform"
