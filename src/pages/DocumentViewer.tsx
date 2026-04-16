@@ -144,6 +144,28 @@ export default function DocumentViewer() {
     generateUrl();
   }, [selectedDocument]);
 
+  const handleDownload = async (filePath: string, fileName: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from('receipts')
+        .download(filePath);
+
+      if (error) throw error;
+
+      const url = window.URL.createObjectURL(data);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName.endsWith('.pdf') ? fileName : `${fileName}.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Erro no download:', err);
+      alert('Falha ao baixar o arquivo. Tente visualizar primeiro.');
+    }
+  };
+
   useEffect(() => {
     if (viewState === 'months' && selectedYear && cloudDocuments.length > 0) {
       const active = cloudDocuments
@@ -194,29 +216,18 @@ export default function DocumentViewer() {
               </motion.button>
 
               {isAvailable && (
-                <a
-                  href={pdfUrl || '#'}
-                  download={`${month}-${selectedYear}.pdf`}
+                <button
                   onClick={(e) => {
-                    // Prevenir abertura do documento ao clicar no download
                     e.stopPropagation();
-                    // Se não tiver pdfUrl ainda, não baixa (vai abrir no useEffect do componente ou via link direto se já houver)
                     if (doc?.file_path) {
-                      const { data } = supabase.storage.from('receipts').getPublicUrl(doc.file_path);
-                      if (data?.publicUrl) {
-                        const link = document.createElement('a');
-                        link.href = data.publicUrl;
-                        link.download = `${month}-${selectedYear}.pdf`;
-                        link.target = "_blank";
-                        link.click();
-                      }
+                      handleDownload(doc.file_path, `${month}-${selectedYear}.pdf`);
                     }
                   }}
                   className="absolute top-4 right-4 p-2 bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-full transition-all"
                   title="Baixar PDF"
                 >
                   <Download className="w-4 h-4" />
-                </a>
+                </button>
               )}
             </motion.div>
           );
@@ -264,25 +275,18 @@ export default function DocumentViewer() {
                   Disponível para Visualização
                 </div>
               </div>
-              <div
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   if (doc?.file_path) {
-                    const { data } = supabase.storage.from('receipts').getPublicUrl(doc.file_path);
-                    if (data?.publicUrl) {
-                      const link = document.createElement('a');
-                      link.href = data.publicUrl;
-                      link.download = doc.filename;
-                      link.target = "_blank";
-                      link.click();
-                    }
+                    handleDownload(doc.file_path, doc.filename || `Rendimento-${doc.year}.pdf`);
                   }
                 }}
                 className="ml-auto p-3 bg-slate-50 text-slate-400 hover:text-white hover:bg-primary rounded-2xl transition-all"
                 title="Baixar PDF"
               >
                 <Download className="w-5 h-5" />
-              </div>
+              </button>
             </motion.button>
           ))}
       </div>
@@ -375,16 +379,14 @@ export default function DocumentViewer() {
             }} className="w-fit flex items-center gap-2 px-4 py-2 rounded-full bg-white text-primary font-bold shadow-sm active:scale-95 transition-transform">
               <ArrowLeft className="w-4 h-4" /> Voltar
             </button>
-            {pdfUrl && (
-              <a
-                href={pdfUrl}
-                download={`${selectedMonth}-${selectedYear}.pdf`}
-                target="_blank"
+            {selectedDocument?.file_path && (
+              <button
+                onClick={() => handleDownload(selectedDocument.file_path, `${selectedMonth}-${selectedYear}.pdf`)}
                 className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-full font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform"
               >
                 <Download className="w-4 h-4" />
                 <span className="hidden sm:inline">Baixar PDF</span>
-              </a>
+              </button>
             )}
           </div>
           <iframe src={pdfUrl || ''} className="flex-1 rounded-3xl border-none min-h-[600px] bg-white shadow-inner" title="PDF Viewer" />
