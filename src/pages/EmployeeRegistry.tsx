@@ -536,13 +536,28 @@ export default function EmployeeRegistry() {
             <Upload className="w-5 h-5" />
             <span>Importar CSV</span>
           </button>
-          <button 
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 bg-white border border-slate-200 text-slate-700 px-6 py-3 rounded-full font-bold hover:bg-slate-50 active:scale-95 transition-all shadow-sm"
-          >
-            <Download className="w-5 h-5" />
-            <span>Exportar CSV</span>
-          </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={async () => {
+                  if (confirm("ATENÇÃO: Isso apagará TODOS os registros de documentos (Holerites/Rendimentos) do banco de dados. Os arquivos no Cloud Storage NÃO serão apagados. Deseja continuar?")) {
+                    const { error } = await supabase.from('documents').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                    if (error) alert("Erro ao limpar: " + error.message);
+                    else alert("Banco de dados de documentos limpo com sucesso! Agora você pode sincronizar novamente.");
+                  }
+                }}
+                className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm"
+              >
+                Limpar Banco
+              </button>
+              
+              <button
+                onClick={() => setShowSyncModal(true)}
+                className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl font-bold hover:scale-105 transition-all shadow-lg shadow-primary/20"
+              >
+                <CloudLightning className="w-5 h-5" />
+                Sincronização Cloud
+              </button>
+            </div>
           <button className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-bold hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-primary/20">
             <Plus className="w-5 h-5" />
             <span>Novo Funcionário</span>
