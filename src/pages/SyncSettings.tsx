@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, BadgeAlert, FolderOpen, Save, ArrowLeft, Fingerprint, Trash2, X, ZoomIn } from 'lucide-react';
+import { Camera, BadgeAlert, FolderOpen, Save, ArrowLeft, Fingerprint, Trash2, X, ZoomIn, Lock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
