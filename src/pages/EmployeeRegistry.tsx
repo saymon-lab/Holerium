@@ -58,6 +58,7 @@ export default function EmployeeRegistry() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [syncLogs, setSyncLogs] = useState<{ type: 'info' | 'error' | 'success', msg: string }[]>([]);
+  const [showSyncModal, setShowSyncModal] = useState(false);
   const [syncReferenceYear, setSyncReferenceYear] = useState(new Date().getFullYear().toString());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
@@ -558,7 +559,7 @@ export default function EmployeeRegistry() {
                 onClick={() => setShowSyncModal(true)}
                 className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl font-bold hover:scale-105 transition-all shadow-lg shadow-primary/20"
               >
-                <CloudLightning className="w-5 h-5" />
+                <CloudCog className="w-5 h-5" />
                 Sincronização Cloud
               </button>
             </div>
