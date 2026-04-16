@@ -331,7 +331,7 @@ export default function EmployeeRegistry() {
       setIsSyncing(true);
       setSyncLogs([{ type: 'info', msg: `Iniciando varredura em: ${handle.name}...` }]);
       
-      const filesToUpload: { handle: FileSystemFileHandle, path: string, year: string, month: string }[] = [];
+      const filesToUpload: { handle: FileSystemFileHandle, path: string, year: string, month: string, category: string }[] = [];
       const fullHistory: { type: 'info' | 'error' | 'success', msg: string }[] = [];
 
       const addLog = (type: 'info' | 'error' | 'success', msg: string) => {
@@ -462,8 +462,6 @@ export default function EmployeeRegistry() {
         }
 
         // REGRA DE ARQUIVO UNICO: Limpeza por ID antes de Upsert
-        const { data: conflicts } = await supabase
-          .from('documents')
         try {
           // LIMPEZA AGRESSIVA: Antes de inserir, remove qualquer registro que tenha o MESMO NOME de arquivo para este usuário
           // Isso garante que se o ano foi detectado errado antes, ele seja limpo agora.

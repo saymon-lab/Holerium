@@ -618,7 +618,7 @@ export default function SuperAdminConsole() {
       setIsSyncing(true);
       addLog('info', `Iniciando varredura em: ${handle.name}...`);
       
-      const filesToUpload: { handle: FileSystemFileHandle, path: string, year: string, month: string }[] = [];
+      const filesToUpload: { handle: FileSystemFileHandle, path: string, year: string, month: string, category: string }[] = [];
       const fullHistory: { type: 'info' | 'error' | 'success' | 'update', msg: string }[] = [];
 
       const addLogToHistory = (type: 'info' | 'error' | 'success' | 'update', msg: string) => {

@@ -348,7 +348,7 @@ export default function SyncSettings() {
 
           <div className="bg-surface-container rounded-2xl p-6 border border-surface-container-high flex items-center justify-between">
             <div className="space-y-1">
-              <p className-[10px] font-black text-secondary uppercase tracking-widest">Senha PIN (4 Dígitos)</p>
+              <p className="text-[10px] font-black text-secondary uppercase tracking-widest">Senha PIN (4 Dígitos)</p>
               <div className="flex items-center gap-3">
                 <p className="text-xl font-black text-primary tracking-[0.4em]">
                   {currentUser.password ? (showCurrentPass ? currentUser.password : '••••') : '••••'}
