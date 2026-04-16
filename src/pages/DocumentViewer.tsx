@@ -212,31 +212,28 @@ export default function DocumentViewer() {
         {cloudDocuments
           .filter(doc => doc.category === 'rendimentos' || doc.month === '16')
           .map((doc, idx) => (
-            <motion.div
+            <motion.button
               key={idx}
               whileHover={{ y: -5 }}
-              className="bg-white p-8 rounded-3xl border border-surface-container-high shadow-sm flex flex-col gap-6"
+              onClick={() => {
+                setSelectedDocument(doc);
+                setSelectedMonth('Comprovante de Rendimentos');
+                setViewState('document');
+              }}
+              className="bg-white p-8 rounded-3xl border border-surface-container-high shadow-sm flex items-center gap-6 text-left group transition-all hover:border-emerald-500/30"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center">
-                  <FileText className="w-8 h-8" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-xl text-on-surface">Exercício {doc.year}</h4>
-                  <p className="text-xs text-secondary-variant font-bold uppercase tracking-wider">Comprovante de Rendimentos</p>
+              <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                <FileText className="w-8 h-8" />
+              </div>
+              <div className="flex flex-col">
+                <h4 className="font-bold text-xl text-on-surface">Exercício {doc.year}</h4>
+                <p className="text-[10px] text-secondary-variant font-bold uppercase tracking-widest mb-2">Informe Anual</p>
+                <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase tracking-tight">
+                  <ShieldCheck className="w-3 h-3" />
+                  Disponível para Visualização
                 </div>
               </div>
-              <button
-                onClick={() => {
-                  setSelectedDocument(doc);
-                  setSelectedMonth('Comprovante de Rendimentos');
-                  setViewState('document');
-                }}
-                className="w-full py-4 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all text-sm"
-              >
-                Visualizar Documento
-              </button>
-            </motion.div>
+            </motion.button>
           ))}
       </div>
       
