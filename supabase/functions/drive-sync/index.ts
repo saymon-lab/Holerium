@@ -201,9 +201,7 @@ async function getGoogleToken(config: any) {
     ["sign"]
   );
 
-  const jwt = await new djwt.Header({ alg: "RS256", typ: "JWT" })
-    .setPayload(payload)
-    .create(key);
+  const jwt = await djwt.create({ alg: "RS256", typ: "JWT" }, payload, key);
 
   const resp = await fetch(config.token_uri, {
     method: "POST",
