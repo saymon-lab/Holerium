@@ -91,6 +91,8 @@ serve(async (req) => {
       }
 
       let category = 'holerite';
+      let month = '01';
+      let year = '2025';
       const folderUpper = folder.name.toUpperCase();
       const match = folder.name.match(/(\d{2})[-/](\d{4})/);
       
@@ -115,7 +117,8 @@ serve(async (req) => {
         category = 'rendimentos';
         year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
       } else {
-        year = folder.name.match(/\d{4}/)?.[0] || targetYearLimit || new Date().getFullYear().toString();
+        const yearMatch = folder.name.match(/\d{4}/);
+        year = yearMatch ? yearMatch[0] : (targetYearLimit || new Date().getFullYear().toString());
         month = "01"; // Fallback
         category = 'holerite';
       }
