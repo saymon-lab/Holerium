@@ -10,7 +10,7 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
-  console.log("--- INICIANDO ROBÔ (v2.6.0) ---");
+  console.log("--- INICIANDO SINCRONIZAÇÃO v3.0 ---");
   let totalSynced = 0;
   let errorCount = 0;
 
@@ -20,26 +20,29 @@ serve(async (req) => {
     const googleJsonStrRaw = Deno.env.get('GOOGLE_SERVICE_ACCOUNT') || '';
     const rootFolderId = Deno.env.get('ROOT_FOLDER_ID') || '1_6thKMpLPSG_3ZPKF0640HDJeFxGyLjr';
 
-    if (!supabaseUrl || !supabaseServiceKey) throw new Error("Configuração do Supabase (URL/KEY) ausente.");
-    if (!googleJsonStrRaw) throw new Error("Configuração do Google Service Account ausente.");
+    if (!supabaseUrl || !supabaseServiceKey) throw new Error("SUPABASE_URL ou KEY ausente.");
+    if (!googleJsonStrRaw) throw new Error("GOOGLE_SERVICE_ACCOUNT ausente.");
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Decodificação segura da chave do Google
-    let googleJsonStr = googleJsonStrRaw.trim();
-    if (!googleJsonStr.startsWith('{')) {
-      try { googleJsonStr = atob(googleJsonStr); } catch { throw new Error("Falha ao decodificar BASE64 da chave Google."); }
+    let googleConfig;
+    try {
+      let jsonContent = googleJsonStrRaw.trim();
+      if (!jsonContent.startsWith('{')) jsonContent = atob(jsonContent);
+      googleConfig = JSON.parse(jsonContent);
+    } catch {
+      throw new Error("Falha ao processar chave do Google JSON.");
     }
-    
-    const googleConfig = JSON.parse(googleJsonStr);
-    console.log("[BOT] Autenticando com Google...");
+
+    console.log("[BOT] Autenticando com Google Drive...");
     const token = await getGoogleToken(googleConfig);
 
-    console.log("[BOT] Carregando funcionários...");
+    console.log("[BOT] Buscando funcionários no banco...");
     const { data: employees, error: empErr } = await supabase.from('employees').select('name, cpf');
-    if (empErr) throw new Error(`Erro DB Funcionários: ${empErr.message}`);
+    if (empErr) throw new Error(`Erro ao listar funcionários: ${empErr.message}`);
 
     const monthFolders: any[] = [];
+    console.log("[BOT] Mapeando pastas no Drive...");
     const rootChildren = await listFolders(rootFolderId, token);
 
     for (const folder of rootChildren) {
@@ -48,21 +51,27 @@ serve(async (req) => {
       if (isMonth) {
         monthFolders.push(folder);
       } else if (isYear) {
-        console.log(`[BOT] Vasculhando ano: ${folder.name}`);
         const subFolders = await listFolders(folder.id, token);
         monthFolders.push(...subFolders);
       }
     }
 
-    console.log(`[BOT] Pastas encontradas: ${monthFolders.length}`);
+    console.log(`[BOT] Pastas Candidatas: ${monthFolders.length}`);
     const startTime = Date.now();
 
     for (const folder of monthFolders) {
-      if (Date.now() - startTime > 110000) break;
+      if (Date.now() - startTime > 105000) {
+        console.log("[BOT] Limite de tempo próximo. Encerrando ciclo.");
+        break;
+      }
 
       let month = '01', year = '2026', category = 'holerite';
-      const match = folder.name.match(/(\d{2})[-/](\d{4})/);
-      if (match) { month = match[1]; year = match[2]; }
+      const folderMatch = folder.name.match(/(\d{2})[-/](\d{4})/);
+      if (folderMatch) {
+         month = folderMatch[1];
+         year = folderMatch[2];
+      }
+      
       const folderUpper = folder.name.toUpperCase();
       if (folderUpper.includes('FERIAS')) category = 'ferias';
       else if (folderUpper.includes('DIRF') || folderUpper.includes('RENDIMENTOS')) category = 'rendimentos';
@@ -73,74 +82,61 @@ serve(async (req) => {
         if (!employee) continue;
 
         const normalizedName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        const cloudPath = `${employee.cpf}/${year}/${month}/${normalizedName}`;
+        const cleanCpf = employee.cpf.replace(/\D/g, '');
+        const formattedCpf = employee.cpf;
+        const cloudPath = `${formattedCpf}/${year}/${month}/${normalizedName}`;
 
         try {
+          console.log(`[PROCESSANDO] ${file.name} -> ${employee.name}`);
           const blob = await downloadFile(file.id, token);
           const { error: stoErr } = await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
           if (stoErr && stoErr.message !== 'The resource already exists') throw stoErr;
 
-          const cleanCpf = employee.cpf.replace(/\D/g, '');
-          const formattedCpf = employee.cpf;
+          // Registro no Banco com Retry de Formato (Clean vs Formatted)
+          const docData = { 
+            owner_cpf: cleanCpf, // Começa tentando limpar (Jan/Fev/Mar 2026 padrão)
+            year, month, category, 
+            filename: normalizedName, 
+            file_path: cloudPath 
+          };
 
-          // Registro no Banco de Dados com Segurança Máxima
-          try {
-            // TESTE DEFINITIVO: Priorizar o CPF LIMPO (só números) que funcionou para Jan/Fev/Mar 2026
-            const targetCpf = cleanCpf; 
+          const { data: existing } = await supabase.from('documents')
+            .select('id')
+            .eq('year', year).eq('month', month).eq('category', category)
+            .or(`owner_cpf.eq."${cleanCpf}",owner_cpf.eq."${formattedCpf}"`)
+            .maybeSingle();
 
-            const { data: existing, error: findErr } = await supabase.from('documents')
-              .select('id').eq('year', year).eq('month', month).eq('category', category)
-              .or(`owner_cpf.eq."${cleanCpf}",owner_cpf.eq."${formattedCpf}"`)
-              .maybeSingle();
-
-            if (findErr) throw findErr;
-
-            const docData = { 
-              owner_cpf: targetCpf, 
-              year, month, category, 
-              filename: normalizedName, 
-              file_path: cloudPath 
-            };
-
-            if (existing && existing.id) {
-              const { error: updErr } = await supabase.from('documents').update(docData).eq('id', existing.id);
-              if (updErr) throw updErr;
-              totalSynced++;
-              console.log(`  [ATUALIZADO] ${employee.name} (${month}/${year})`);
-            } else {
-              // Tenta inserir primeiro com o CPF limpo
-              const { error: insErr } = await supabase.from('documents').insert(docData);
-              
-              if (insErr) {
-                // Plano B: Tenta com CPF formatado se o limpo falhar
-                console.warn(`  [!] Falha com CPF limpo, tentando formatado para ${employee.name}...`);
-                docData.owner_cpf = formattedCpf;
-                const { error: insErr2 } = await supabase.from('documents').insert(docData);
-                if (insErr2) throw insErr2;
-              }
-              
-              totalSynced++;
-              console.log(`  [INSERIDO] ${employee.name} (${month}/${year})`);
+          if (existing?.id) {
+            await supabase.from('documents').update(docData).eq('id', existing.id);
+            console.log(`  [OK] Registro atualizado para ${employee.name}`);
+          } else {
+            const { error: insErr } = await supabase.from('documents').insert(docData);
+            if (insErr) {
+              // Failback para CPF formatado (Regras de FK antigas)
+              docData.owner_cpf = formattedCpf;
+              const { error: insErr2 } = await supabase.from('documents').insert(docData);
+              if (insErr2) throw new Error(`Falha no vínculo (FK): ${insErr2.message}`);
             }
-          } catch (dbEx: any) {
-            console.error(`  [!] Falha no banco para ${employee.name}:`, dbEx.message);
-            errorCount++;
+            console.log(`  [OK] Novo registro criado para ${employee.name}`);
           }
+          
+          totalSynced++;
         } catch (e: any) {
-          console.error(`[!] Erro no arquivo ${file.name}:`, e.message);
+          console.error(`  [!] Erro no arquivo ${file.name}:`, e?.message || 'Erro Desconhecido');
           errorCount++;
         }
       }
     }
 
-    return new Response(JSON.stringify({ success: true, totalSynced, errorCount }), { 
+    return new Response(JSON.stringify({ status: "success", totalSynced, errorCount }), { 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 
   } catch (err: any) {
-    console.error("[ERRO FATAL]", err.message);
-    return new Response(JSON.stringify({ error: err.message }), { 
-      status: 200, // Retornar 200 para o console mostrar o erro no corpo
+    const errorMsg = err?.message || 'Erro inesperado na execução';
+    console.error("[ERRO CRÍTICO]", errorMsg);
+    return new Response(JSON.stringify({ status: "error", message: errorMsg }), { 
+      status: 200, 
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
@@ -156,16 +152,8 @@ async function getGoogleToken(config: any) {
     iat: now,
   };
 
-  const pemContents = config.private_key
-    .replace(/-----BEGIN PRIVATE KEY-----/, "")
-    .replace(/-----END PRIVATE KEY-----/, "")
-    .replace(/\s/g, "");
-  
-  const binaryDerString = atob(pemContents);
-  const binaryDer = new Uint8Array(binaryDerString.length);
-  for (let i = 0; i < binaryDerString.length; i++) {
-    binaryDer[i] = binaryDerString.charCodeAt(i);
-  }
+  const pem = config.private_key.replace(/-----BEGIN PRIVATE KEY-----/, "").replace(/-----END PRIVATE KEY-----/, "").replace(/\s/g, "");
+  const binaryDer = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
 
   const key = await crypto.subtle.importKey(
     "pkcs8", binaryDer.buffer,
@@ -174,7 +162,6 @@ async function getGoogleToken(config: any) {
   );
 
   const jwt = await djwt.create({ alg: "RS256", typ: "JWT" }, payload, key);
-
   const resp = await fetch(config.token_uri, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -182,7 +169,7 @@ async function getGoogleToken(config: any) {
   });
 
   const data = await resp.json();
-  if (!data || data.error) throw new Error(`Google Auth: ${data?.error_description || 'Resposta vazia'}`);
+  if (!data || data.error) throw new Error(data?.error_description || "Erro de login no Google");
   return data.access_token;
 }
 
@@ -208,7 +195,7 @@ async function downloadFile(id: string, token: string) {
   const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, {
     headers: { Authorization: `Bearer ${token}` }
   });
-  if (!resp.ok) throw new Error(`Download Google falhou: ${resp.status}`);
+  if (!resp.ok) throw new Error("Falha no download");
   return await resp.blob();
 }
 
