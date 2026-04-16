@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import * as djwt from "https://deno.land/x/djwt@v2.9/mod.ts"
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
