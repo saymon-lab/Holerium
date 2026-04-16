@@ -197,10 +197,22 @@ export default function EmployeeRegistry() {
   };
 
   const handleResetPassword = async (emp: any) => {
-    const confirm = window.confirm(`Deseja resetar a senha de ${emp.name}? A nova senha será o próprio CPF.`);
+    const confirm = window.confirm(`Deseja resetar a senha de ${emp.name}? O colaborador precisará cadastrar uma nova senha no próximo login.`);
     if (!confirm) return;
     
-    alert('Funcionalidade de reset de senha via Admin sendo integrada ao AuthService...');
+    try {
+      const { error } = await supabase
+        .from('employees')
+        .update({ password: null })
+        .eq('id', emp.id);
+
+      if (error) throw error;
+      
+      alert('Senha resetada com sucesso! O campo agora está livre para novo cadastro.');
+      fetchEmployees();
+    } catch (err: any) {
+      alert('Erro ao resetar: ' + err.message);
+    }
   };
 
   const handleExportCSV = () => {
@@ -569,6 +581,7 @@ export default function EmployeeRegistry() {
                 <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Perfil</th>
                 <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Identificação (CPF)</th>
                 <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Status</th>
+                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Senha</th>
                 <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-right">Ações</th>
               </tr>
             </thead>
@@ -597,6 +610,16 @@ export default function EmployeeRegistry() {
                     )}>
                       {emp.status}
                     </span>
+                  </td>
+                  <td className="px-8 py-6 text-center">
+                    <div className="flex flex-col items-center">
+                      <span className={cn(
+                        "font-mono text-sm font-bold tracking-widest px-3 py-1 bg-slate-50 rounded-lg border border-slate-100",
+                        emp.password ? "text-primary" : "text-slate-300 italic text-[10px]"
+                      )}>
+                        {emp.password || 'Não cadastrada'}
+                      </span>
+                    </div>
                   </td>
                   <td className="px-8 py-6 text-right">
                     <div className="flex justify-end gap-2 items-center">

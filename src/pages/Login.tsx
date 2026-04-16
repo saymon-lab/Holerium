@@ -19,6 +19,9 @@ export default function Login() {
   const [rememberMe, setRememberMe] = useState(() => {
     return localStorage.getItem('remember_me') === 'true';
   });
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [registerPassword, setRegisterPassword] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   React.useEffect(() => {
     const savedCpf = localStorage.getItem('remembered_cpf');
@@ -91,8 +94,9 @@ export default function Login() {
     const cleanInput = cpf.replace(/\D/g, '').trim(); 
 
     try {
+      setIsSubmitting(true);
       // Tenta buscar tanto pelo CPF digitado quanto pelo CPF limpo (sem pontos)
-      const { data: foundRaw, error: dbError } = await supabase
+      const { data: found, error: dbError } = await supabase
         .from('employees')
         .select('*')
         .or(`cpf.eq."${cpf}",cpf.eq."${cleanInput}"`)
@@ -100,10 +104,46 @@ export default function Login() {
 
       if (dbError) throw dbError;
 
-      if (foundRaw) {
-        const found = foundRaw; 
+      if (found) {
+        // Se estiver tentando cadastrar senha
+        if (isRegistering) {
+          if (found.password) {
+            setError('Já existe uma senha cadastrada para este CPF.');
+            setIsRegistering(false);
+            return;
+          }
 
-        // Aceita diferentes nomes de cargos para admin
+          if (registerPassword.length !== 4 || !/^\d+$/.test(registerPassword)) {
+            setError('A senha deve conter exatamente 4 números.');
+            return;
+          }
+
+          const { error: updateError } = await supabase
+            .from('employees')
+            .update({ password: registerPassword })
+            .eq('id', found.id);
+
+          if (updateError) throw updateError;
+
+          alert('Senha cadastrada com sucesso! Agora você pode fazer o login.');
+          setIsRegistering(false);
+          setRegisterPassword('');
+          return;
+        }
+
+        // Login Normal
+        if (!found.password) {
+          setError('Este CPF ainda não possui senha cadastrada. Clique em "Cadastrar Senha" abaixo.');
+          return;
+        }
+
+        if (found.password !== password) {
+          setError('Senha incorreta.');
+          await recordLog(found.name, loginTab === 'admin' ? 'Gestão' : 'Colaborador', 'erro', 'Senha inválida');
+          return;
+        }
+
+        // Se chegou aqui, login OK
         const isAdmin = ['admin', 'superadmin', 'Administrador do Sistema', 'Desenvolvedor Geral'].includes(found.role);
 
         if (loginTab === 'admin' && !isAdmin) {
@@ -128,7 +168,9 @@ export default function Login() {
       }
     } catch (e) {
       console.error('Erro de Login:', e);
-      setError('Erro ao ler base de dados do servidor.');
+      setError('Erro ao processar solicitação no servidor.');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -352,7 +394,7 @@ export default function Login() {
                 </div>
               )}
 
-              { loginTab === 'super' && (
+              { loginTab === 'super' ? (
                 <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
                   <label className="block text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">
                     Senha de Servidor
@@ -367,6 +409,47 @@ export default function Login() {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
+                    />
+                  </div>
+                </motion.div>
+              ) : isRegistering ? (
+                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3 bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100">
+                  <label className="block text-[10px] font-black text-primary uppercase tracking-[0.2em]">
+                    Criar Nova Senha (4 Números)
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-primary/40 group-focus-within:text-primary transition-colors">
+                       <Key className="w-5 h-5" />
+                    </div>
+                    <input 
+                      className="block w-full pl-16 pr-6 py-6 bg-white border border-blue-200 rounded-[1.5rem] text-primary font-black text-2xl tracking-[0.5em] placeholder:text-outline/20 focus:ring-4 focus:ring-primary/10 transition-all outline-none shadow-sm"
+                      placeholder="0000" 
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={registerPassword}
+                      onChange={(e) => setRegisterPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                    />
+                  </div>
+                  <p className="text-[9px] text-blue-600/60 font-bold uppercase tracking-widest text-center mt-2">Esta senha será usada para seus próximos acessos</p>
+                </motion.div>
+              ) : (
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+                  <label className="block text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">
+                    Senha de 4 Dígitos
+                  </label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+                       <Lock className="w-5 h-5" />
+                    </div>
+                    <input 
+                      className="block w-full pl-16 pr-6 py-6 bg-white border border-surface-container-high rounded-[1.5rem] text-on-surface font-black text-lg placeholder:text-outline/30 focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all outline-none shadow-sm"
+                      placeholder="••••" 
+                      type="password"
+                      inputMode="numeric"
+                      maxLength={4}
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
                     />
                   </div>
                 </motion.div>
@@ -387,13 +470,31 @@ export default function Login() {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-5 h-5 rounded-lg border-outline-variant text-[#775a19] focus:ring-[#E9C176]/20 transition-all cursor-pointer"
                   />
-                  <span className="text-secondary font-semibold group-hover:text-primary transition-colors">Lembrar acesso</span>
+                  <span className="text-secondary font-semibold group-hover:text-primary transition-colors">Lembrar</span>
                 </label>
+
+                {loginTab !== 'super' && (
+                  <button 
+                    type="button"
+                    onClick={() => {
+                      setIsRegistering(!isRegistering);
+                      setError('');
+                    }}
+                    className="text-primary font-bold text-xs hover:underline decoration-2 underline-offset-4"
+                  >
+                    {isRegistering ? 'Voltar ao Login' : 'Cadastrar Senha'}
+                  </button>
+                )}
               </div>
 
-              <button className="w-full bg-primary text-white py-6 rounded-[1.5rem] font-black flex items-center justify-center space-x-4 group hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-primary/30">
-                <span className="uppercase tracking-[0.3em] text-[10px]">Autenticação Segura</span>
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <button 
+                disabled={isSubmitting}
+                className="w-full bg-primary text-white py-6 rounded-[1.5rem] font-black flex items-center justify-center space-x-4 group hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:scale-100"
+              >
+                <span className="uppercase tracking-[0.3em] text-[10px]">
+                  {isSubmitting ? 'Verificando...' : isRegistering ? 'Confirmar Cadastro' : 'Autenticação Segura'}
+                </span>
+                {!isSubmitting && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
               </button>
             </form>
 

@@ -14,6 +14,9 @@ export default function SyncSettings() {
   });
   const [isRegisteringBio, setIsRegisteringBio] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [isUpdatingPassword, setIsUpdatingPassword] = useState(false);
+  const [showPasswordForm, setShowPasswordForm] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
 
   // States for Cropping
   const [imageToCrop, setImageToCrop] = useState<string | null>(null);
@@ -230,6 +233,35 @@ export default function SyncSettings() {
     }
   };
 
+  const handleUpdatePassword = async () => {
+    if (newPassword.length !== 4 || !/^\d+$/.test(newPassword)) {
+      alert('A senha deve conter exatamente 4 números.');
+      return;
+    }
+
+    try {
+      setIsUpdatingPassword(true);
+      const { error } = await supabase
+        .from('employees')
+        .update({ password: newPassword })
+        .eq('cpf', currentUser.cpf);
+
+      if (error) throw error;
+
+      const updatedUser = { ...currentUser, password: newPassword };
+      setCurrentUser(updatedUser);
+      localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+      
+      alert('Senha alterada com sucesso!');
+      setShowPasswordForm(false);
+      setNewPassword('');
+    } catch (err: any) {
+      alert('Erro ao atualizar senha: ' + err.message);
+    } finally {
+      setIsUpdatingPassword(false);
+    }
+  };
+
   const isColaborador = currentUser.role !== 'Administrador do Sistema';
 
   return (
@@ -294,6 +326,71 @@ export default function SyncSettings() {
           </div>
         )}
       </div>
+
+      {/* Seção de Segurança: CPF e Senha */}
+      <section className="bg-white rounded-3xl p-10 shadow-sm border border-surface-container-high space-y-8">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
+            <Lock className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-xl font-bold text-on-surface">Configurações de Segurança</h3>
+            <p className="text-xs text-secondary font-medium">Gerencie seu acesso e PIN de segurança.</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="bg-surface-container rounded-2xl p-6 space-y-1 border border-surface-container-high">
+            <p className="text-[10px] font-black text-secondary uppercase tracking-widest">Seu CPF Registrado</p>
+            <p className="text-xl font-black text-primary tracking-tight">{currentUser.cpf || 'Não informado'}</p>
+          </div>
+
+          <div className="bg-surface-container rounded-2xl p-6 border border-surface-container-high flex items-center justify-between">
+            <div className="space-y-1">
+              <p className="text-[10px] font-black text-secondary uppercase tracking-widest">Senha PIN (4 Dígitos)</p>
+              <p className="text-xl font-black text-primary tracking-[0.4em]">{currentUser.password || '••••'}</p>
+            </div>
+            <button 
+              onClick={() => setShowPasswordForm(true)}
+              className="px-4 py-2 bg-white text-primary rounded-xl font-bold text-xs border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-sm"
+            >
+              Alterar Senha
+            </button>
+          </div>
+        </div>
+
+        {showPasswordForm && (
+          <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="mt-6 p-8 bg-primary/5 rounded-[2.5rem] border border-primary/10 space-y-6">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-black text-primary uppercase tracking-[0.2em]">Definir Nova Senha</h4>
+              <button onClick={() => setShowPasswordForm(false)} className="text-secondary hover:text-primary"><X className="w-5 h-5" /></button>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex-1 space-y-2">
+                <p className="text-[10px] font-bold text-secondary-variant">Digite 4 números:</p>
+                <input 
+                  type="password"
+                  maxLength={4}
+                  inputMode="numeric"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                  className="w-full bg-white border-2 border-primary/20 rounded-2xl px-6 py-4 text-center text-3xl font-black tracking-[1em] focus:border-primary outline-none transition-all"
+                  placeholder="0000"
+                />
+              </div>
+              <button 
+                onClick={handleUpdatePassword}
+                disabled={isUpdatingPassword || newPassword.length !== 4}
+                className="w-full sm:w-auto px-10 py-5 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Save className="w-5 h-5" />
+                {isUpdatingPassword ? 'Salvando...' : 'Salvar Senha'}
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </section>
 
       {/* Seção de Biometria */}
       <section className="bg-white rounded-3xl p-10 shadow-sm border border-surface-container-high space-y-6">
