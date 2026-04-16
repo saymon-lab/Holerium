@@ -95,6 +95,25 @@ export default function DocumentViewer() {
 
   useEffect(() => { if (userCpf) loadCloudData(); }, [userCpf]);
 
+  // Escutar mudanças de navegação para resetar o estado (Ex: Clicar no menu lateral)
+  useEffect(() => {
+    const state = location.state as any;
+    if (state?.reset) {
+      if (state?.rendimentos) {
+        setViewState('rendimentos');
+      } else {
+        setViewState('years');
+        setSelectedYear(null);
+      }
+      setSelectedMonth(null);
+      setSelectedDocument(null);
+      setPdfUrl(null);
+      
+      // Limpar o estado da navegação para não repetir o reset ao recarregar
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate, location.pathname]);
+
   useEffect(() => {
     sessionStorage.setItem('doc_viewState', viewState);
     if (selectedYear) sessionStorage.setItem('doc_selectedYear', selectedYear);
