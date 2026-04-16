@@ -135,29 +135,30 @@ serve(async (req) => {
         const normalizedName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const cloudPath = `${employee.cpf}/${year}/${month}/${normalizedName}`;
 
-        // Verifica duplicata no banco (rápido) antes de baixar (lento)
-        const { data: existing } = await supabase.from('documents').select('id').eq('file_path', cloudPath).maybeSingle();
-        if (existing) continue;
-
+        // Verifica se o registro já existe no banco (pelo caminho do arquivo ou pelos metadados)
         try {
           const blob = await downloadFile(file.id, token);
           const { error: storageErr } = await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
-          if (storageErr) throw storageErr;
+          
+          if (storageErr && storageErr.message !== 'The resource already exists') {
+            throw storageErr;
+          }
 
-          // PADRONIZAÇÃO E ATUALIZAÇÃO DIRETA NO ROBÔ (PARA EVITAR PROBLEMAS DE DELETE)
           const cleanCpf = employee.cpf.replace(/\D/g, '');
           const formattedCpf = employee.cpf;
 
-          // 1. Busca para ver se já existe
-          const { data: existing } = await supabase
+          // Busca se já existe um documento para este CPF/Ano/Mês/Categoria
+          const { data: dbEntry } = await supabase
             .from('documents')
             .select('id')
             .eq('year', year)
             .eq('month', month)
-            .or(`owner_cpf.eq.${cleanCpf},owner_cpf.eq."${formattedCpf}"`);
+            .eq('category', category)
+            .or(`owner_cpf.eq."${formattedCpf}",owner_cpf.eq."${cleanCpf}"`)
+            .maybeSingle();
 
           const docData = {
-            owner_cpf: employee.cpf, // Usar o CPF original para bater com a chave estrangeira
+            owner_cpf: formattedCpf,
             year,
             month,
             filename: normalizedName,
@@ -165,18 +166,27 @@ serve(async (req) => {
             category: category
           };
 
-          if (existing && existing.length > 0) {
-            // 2. Se existe, atualiza pelo ID (Evita conflito de chave única)
-            await supabase.from('documents').update(docData).eq('id', existing[0].id);
+          if (dbEntry) {
+            // Atualiza o existente
+            const { error: upErr } = await supabase.from('documents').update(docData).eq('id', dbEntry.id);
+            if (upErr) console.error(` [!] Erro ao atualizar DB: ${upErr.message}`);
           } else {
-            // 3. Se não existe, insere
-            await supabase.from('documents').insert(docData);
+            // Tenta inserir com CPF formatado
+            const { error: insErr } = await supabase.from('documents').insert(docData);
+            
+            if (insErr) {
+              console.warn(` [!] Falha com CPF formatado, tentando CPF limpo...`);
+              docData.owner_cpf = cleanCpf;
+              const { error: insErr2 } = await supabase.from('documents').insert(docData);
+              if (insErr2) throw new Error(`Erro DB persistente: ${insErr2.message}`);
+            }
           }
 
           totalSynced++;
-          console.log(`  [OK] ${employee.name}`);
+          console.log(`  [OK] ${employee.name} (${month}/${year})`);
         } catch (e: any) {
-          console.error(`  [!] ${file.name}: ${e.message}`);
+          console.error(`  [!] Erro no arquivo ${file.name}: ${e.message}`);
+          errorCount++;
         }
       }
     }
