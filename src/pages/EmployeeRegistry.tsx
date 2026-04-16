@@ -107,7 +107,7 @@ export default function EmployeeRegistry() {
     } else if (currentStep === 2) {
       try {
         const { error } = await supabase
-          .from('Funcionários')
+          .from('employees')
           .delete()
           .eq('id', empId);
         
@@ -265,6 +265,7 @@ export default function EmployeeRegistry() {
         name = name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         cpf = cpf.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+        const cleanCpf = cpf.replace(/\D/g, '');
         // Verifica se já foi adicionado neste mesmo lote (no arquivo CSV)
         const existsInBatch = employeesToInsert.some(e => e.cpf.replace(/\D/g, '') === cleanCpf);
 

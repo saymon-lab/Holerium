@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import * as djwt from "https://deno.land/x/djwt@v2.9/mod.ts"
@@ -42,8 +43,11 @@ serve(async (req) => {
     for (const folder of rootChildren) {
       const isYear = folder.name.match(/^20\d{2}$/);
       const isFullMonth = folder.name.match(/(\d{2})[-/](\d{4})/);
+      const isDIRF = folder.name.match(/(DIRF|RENDIMENTOS)-(\d{4})/i);
       
-      if (isFullMonth) {
+      if (isDIRF) {
+        monthFolders.push({ id: folder.id, name: folder.name, month: '16', year: isDIRF[2] });
+      } else if (isFullMonth) {
         monthFolders.push({ id: folder.id, name: folder.name, month: isFullMonth[1], year: isFullMonth[2] });
       } else if (isYear) {
         const year = isYear[0];
@@ -69,11 +73,27 @@ serve(async (req) => {
       const { month, year } = folder;
       let category = 'holerite';
       const folderUpper = folder.name.toUpperCase();
-      if (folderUpper.includes('FERIAS')) category = 'ferias';
-      else if (folderUpper.includes('DIRF') || folderUpper.includes('RENDIMENTOS')) category = 'rendimentos';
+      
+      if (folderUpper.includes('FERIAS') || month === '15') {
+        category = 'ferias';
+      } else if (folderUpper.includes('DIRF') || folderUpper.includes('RENDIMENTOS') || month === '16') {
+        category = 'rendimentos';
+      } else if (folderUpper.includes('PRIMEIRA') || month === '13') {
+        category = '13_salario_1';
+      } else if (folderUpper.includes('SEGUNDA') || month === '14') {
+        category = '13_salario_2';
+      }
 
       const files = await listFiles(folder.id, token);
+      console.log(`[BOT] Pasta ${year}/${month}: ${files.length} arquivos.`);
+
       for (const file of files) {
+        // Proteção contra Timeout: Se faltar menos de 10s para os 2 minutos, para.
+        if (Date.now() - startTime > 110000) {
+          console.log("[BOT] Limite de tempo atingido. Encerrando ciclo.");
+          return new Response(JSON.stringify({ status: "partial", totalSynced }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+
         const employee = matchEmployee(file.name, employees || []);
         if (!employee) continue;
 
@@ -84,24 +104,35 @@ serve(async (req) => {
 
         try {
           console.log(`[PROCESSANDO] ${year}/${month} - ${file.name}`);
+          
+          // 1. Download do Google Drive
           const blob = await downloadFile(file.id, token);
+          
+          // 2. Upload para Supabase Storage
           await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
 
-          // Limpeza Força Bruta
-          await supabase.from('documents').delete().eq('owner_cpf', cleanCpf).eq('year', year).eq('month', month).eq('category', category);
-          await supabase.from('documents').delete().eq('owner_cpf', formattedCpf).eq('year', year).eq('month', month).eq('category', category);
+          // 3. LIMPEZA SEGURA: Só deleta se chegamos aqui
+          const matchCriteria = { owner_cpf: cleanCpf, year, month, category };
+          await supabase.from('documents').delete().match(matchCriteria);
+          
+          // Tentativa com CPF formatado também (por segurança de migração)
+          if (cleanCpf !== formattedCpf) {
+            await supabase.from('documents').delete().match({ owner_cpf: formattedCpf, year, month, category });
+          }
 
-          // Inserção com fallback
+          // 4. INSERÇÃO DO NOVO REGISTRO
           const docData = { owner_cpf: cleanCpf, year, month, category, filename: normalizedName, file_path: cloudPath };
           const { error: insErr } = await supabase.from('documents').insert(docData);
+          
           if (insErr) {
+            console.warn(`    [!] Erro FK, tentando CPF formatado...`);
             docData.owner_cpf = formattedCpf;
             await supabase.from('documents').insert(docData);
           }
           
           totalSynced++;
         } catch (e: any) {
-          console.error(`  [!] Erro em ${file.name}:`, e.message);
+          console.error(`  [!] Erro crítico em ${file.name}:`, e.message);
           errorCount++;
         }
       }

@@ -165,9 +165,9 @@ export default function SyncSettings() {
         challenge,
         rp: { name: "Holerium", id: window.location.hostname },
         user: {
-          id: Uint8Array.from(currentUser.cpf.replace(/\D/g, ''), c => c.charCodeAt(0)),
-          name: currentUser.name,
-          displayName: currentUser.name,
+          id: Uint8Array.from((currentUser.cpf || '').replace(/\D/g, ''), (c: string) => c.charCodeAt(0)),
+          name: currentUser.name || 'Usuário',
+          displayName: currentUser.name || 'Usuário',
         },
         pubKeyCredParams: [{ alg: -7, type: "public-key" }, { alg: -257, type: "public-key" }],
         timeout: 60000,

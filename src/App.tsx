@@ -14,18 +14,18 @@ export default function App() {
     <Router>
       <Routes>
         <Route path="/login" element={<Login />} />
-        
+
         <Route element={<Layout />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/admin" element={<EmployeeRegistry />} />
           <Route path="/documents" element={<DocumentViewer />} />
           <Route path="/settings" element={<SyncSettings />} />
           <Route path="/superadmin" element={<SuperAdminConsole />} />
-          
+
           {/* Fallbacks */}
           <Route path="/logs" element={<AccessLogs />} />
         </Route>
-        
+
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
