@@ -58,7 +58,6 @@ export default function EmployeeRegistry() {
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncProgress, setSyncProgress] = useState({ current: 0, total: 0, status: '' });
   const [syncLogs, setSyncLogs] = useState<{ type: 'info' | 'error' | 'success', msg: string }[]>([]);
-  const [showSyncModal, setShowSyncModal] = useState(false);
   const [syncReferenceYear, setSyncReferenceYear] = useState(new Date().getFullYear().toString());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
@@ -537,32 +536,6 @@ export default function EmployeeRegistry() {
             <Upload className="w-5 h-5" />
             <span>Importar CSV</span>
           </button>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={async () => {
-                  if (confirm("Deseja apagar apenas os registros de 'Meus Rendimentos' para corrigir os anos? Os Holerites NÃO serão afetados.")) {
-                    const { error } = await supabase
-                      .from('documents')
-                      .delete()
-                      .or('category.eq.rendimentos,month.eq.16');
-                    
-                    if (error) alert("Erro ao limpar: " + error.message);
-                    else alert("Banco de dados de Rendimentos limpo! Agora você pode sincronizar a pasta DIRF-2025.");
-                  }
-                }}
-                className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm"
-              >
-                Limpar Rendimentos
-              </button>
-              
-              <button
-                onClick={() => setShowSyncModal(true)}
-                className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-2xl font-bold hover:scale-105 transition-all shadow-lg shadow-primary/20"
-              >
-                <CloudCog className="w-5 h-5" />
-                Sincronização Cloud
-              </button>
-            </div>
           <button className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-bold hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-primary/20">
             <Plus className="w-5 h-5" />
             <span>Novo Funcionário</span>
