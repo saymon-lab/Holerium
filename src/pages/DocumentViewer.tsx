@@ -60,13 +60,12 @@ export default function DocumentViewer() {
       const cleanCpf = userCpf.replace(/\D/g, '');
       const formattedCpf = userCpf.includes('.') ? userCpf : userCpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
       
-      const searchTerms = Array.from(new Set([userCpf, cleanCpf, formattedCpf]));
-      console.log(`[DEBUG] Buscando CPFs:`, searchTerms);
+      console.log(`[DEBUG] Buscando documentos para: ${userCpf} / ${cleanCpf}`);
 
       const { data: documentsData, error: dbErr } = await supabase
         .from('documents')
         .select('*')
-        .in('owner_cpf', searchTerms);
+        .or(`owner_cpf.eq."${userCpf}",owner_cpf.eq."${cleanCpf}",owner_cpf.eq."${formattedCpf}"`);
 
       if (dbErr) throw dbErr;
 
@@ -82,8 +81,19 @@ export default function DocumentViewer() {
       const foundYears = new Set<string>();
       processedDocs
         .filter(doc => doc.month !== '16' && doc.category !== 'rendimentos')
-        .forEach(doc => foundYears.add(doc.year));
-      setYears(Array.from(foundYears).sort((a, b) => b.localeCompare(a)));
+        .forEach(doc => {
+          if (doc.year && doc.year.length === 4) {
+            foundYears.add(doc.year);
+          }
+        });
+      
+      const sortedYears = Array.from(foundYears).sort((a, b) => b.localeCompare(a));
+      setYears(sortedYears);
+
+      // Se houver apenas um ano e não estiver selecionado, seleciona automaticamente
+      if (sortedYears.length === 1 && !selectedYear) {
+        // setSelectedYear(sortedYears[0]);
+      }
 
     } catch (err: any) {
       console.error('Erro:', err);
@@ -93,7 +103,11 @@ export default function DocumentViewer() {
     }
   };
 
-  useEffect(() => { if (userCpf) loadCloudData(); }, [userCpf]);
+  useEffect(() => { 
+    if (userCpf) {
+      loadCloudData(); 
+    }
+  }, [userCpf]);
 
   useEffect(() => {
     sessionStorage.setItem('doc_viewState', viewState);
@@ -163,15 +177,31 @@ export default function DocumentViewer() {
         </button>
         <h2 className="text-5xl font-extrabold text-on-surface">Holerites</h2>
       </div>
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
-        {years.map(year => (
-          <motion.button key={year} whileHover={{ y: -5 }} onClick={() => { setSelectedYear(year); setViewState('months'); }}
-            className="bg-white p-8 rounded-3xl border shadow-sm flex flex-col items-center gap-4 h-56">
-            <Folder className="w-20 h-20 text-slate-200" fill="currentColor" />
-            <span className="font-bold text-2xl">Ano {year}</span>
-          </motion.button>
-        ))}
-      </div>
+
+      {years.length > 0 ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+          {years.map(year => (
+            <motion.button key={year} whileHover={{ y: -5 }} onClick={() => { setSelectedYear(year); setViewState('months'); }}
+              className="bg-white p-8 rounded-3xl border shadow-sm flex flex-col items-center gap-4 h-56">
+              <Folder className="w-20 h-20 text-slate-200" fill="currentColor" />
+              <span className="font-bold text-2xl">Ano {year}</span>
+            </motion.button>
+          ))}
+        </div>
+      ) : (
+        <div className="flex flex-col items-center justify-center p-20 bg-white rounded-[3rem] border-2 border-dashed border-slate-100 space-y-6">
+          <div className="w-24 h-24 bg-slate-50 rounded-full flex items-center justify-center">
+            <ShieldCheck className="w-12 h-12 text-slate-200" />
+          </div>
+          <div className="text-center">
+            <h3 className="text-2xl font-bold text-on-surface">Nenhuma pasta encontrada</h3>
+            <p className="text-secondary max-w-sm mt-2">Não encontramos holerites vinculados ao seu CPF para este período.</p>
+          </div>
+          <button onClick={loadCloudData} className="px-8 py-3 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all">
+            Tentar Novamente
+          </button>
+        </div>
+      )}
     </div>
   );
 

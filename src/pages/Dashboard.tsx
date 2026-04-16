@@ -18,7 +18,7 @@ import { cn } from '@/src/lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
 
-const recentActivities: any[] = [];
+// Activities will be fetched dynamically from the database
 
 const categories = [
   { icon: Clock, label: 'Docs Recentes', desc: '0 novos arquivos adicionados hoje', color: 'text-blue-600', iconBg: 'bg-blue-50', path: '/documents' },
@@ -35,17 +35,62 @@ export default function Dashboard() {
   });
 
   const [docCount, setDocCount] = useState(0);
+  const [lastUpdate, setLastUpdate] = useState('...');
+  const [activities, setActivities] = useState<any[]>([]);
+
+  const formatMonth = (m: string) => {
+    const months: any = {
+      '01': 'Jan', '02': 'Fev', '03': 'Mar', '04': 'Abr', '05': 'Mai', '06': 'Jun',
+      '07': 'Jul', '08': 'Ago', '09': 'Set', '10': 'Out', '11': 'Nov', '12': 'Dez',
+      '13': '13º (1ª)', '14': '13º (2ª)', '15': 'Férias', '16': 'DIRF'
+    };
+    return months[m] || m;
+  };
 
   useEffect(() => {
     const fetchStats = async () => {
       if (!currentUser?.cpf) return;
       const cleanCpf = currentUser.cpf.replace(/\D/g, '');
-      const { data, count } = await supabase
+      const cpfFilter = `owner_cpf.eq."${currentUser.cpf}",owner_cpf.eq."${cleanCpf}"`;
+
+      // 1. Total Document Count
+      const { count } = await supabase
         .from('documents')
         .select('*', { count: 'exact', head: true })
-        .or(`owner_cpf.eq."${currentUser.cpf}",owner_cpf.eq."${cleanCpf}"`);
+        .or(cpfFilter);
       
       if (count !== null) setDocCount(count);
+
+      // 2. Last Logical Update (Latest Month/Year)
+      const { data: latestDoc } = await supabase
+        .from('documents')
+        .select('year, month')
+        .or(cpfFilter)
+        .order('year', { ascending: false })
+        .order('month', { ascending: false })
+        .limit(1);
+
+      if (latestDoc && latestDoc.length > 0) {
+        setLastUpdate(`${formatMonth(latestDoc[0].month)} ${latestDoc[0].year}`);
+      }
+
+      // 3. Recent Activities (Last 5 based on created_at)
+      const { data: recentDocs } = await supabase
+        .from('documents')
+        .select('id, filename, created_at, year, month')
+        .or(cpfFilter)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      if (recentDocs) {
+        setActivities(recentDocs.map(doc => ({
+          id: doc.id,
+          name: doc.filename,
+          date: new Date(doc.created_at).toLocaleDateString('pt-BR'),
+          year: doc.year,
+          month: doc.month
+        })));
+      }
     };
     fetchStats();
   }, [currentUser?.cpf]);
@@ -109,7 +154,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Última Atualização</p>
-                  <p className="text-xl sm:text-2xl font-black text-[#0B1F5B]">Mar 2026</p>
+                  <p className="text-xl sm:text-2xl font-black text-[#0B1F5B]">{lastUpdate}</p>
                 </div>
                 <div className="col-span-2 sm:col-span-1 border-t sm:border-t-0 pt-6 sm:pt-0">
                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
@@ -191,8 +236,8 @@ export default function Dashboard() {
               </button>
             </div>
 
-            <div className="space-y-3 flex-1 flex flex-col items-center justify-center text-center p-6">
-              {recentActivities.length > 0 ? recentActivities.map((act) => (
+            <div className="space-y-3 flex-1 flex flex-col items-center justify-start text-center p-0 mt-4 overflow-auto">
+              {activities.length > 0 ? activities.map((act) => (
                 <div 
                   key={act.id} 
                   className="flex items-center gap-4 p-4 rounded-3xl border border-slate-50 hover:border-slate-100 hover:bg-slate-50/50 transition-all group cursor-pointer w-full"
