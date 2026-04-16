@@ -92,35 +92,37 @@ serve(async (req) => {
           const { error: stoErr } = await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
           if (stoErr && stoErr.message !== 'The resource already exists') throw stoErr;
 
-          // Registro no Banco com Retry de Formato (Clean vs Formatted)
-          const docData = { 
-            owner_cpf: cleanCpf, // Começa tentando limpar (Jan/Fev/Mar 2026 padrão)
-            year, month, category, 
-            filename: normalizedName, 
-            file_path: cloudPath 
-          };
+          // Registro no Banco com estratégia "Limpeza de Conflitos"
+          try {
+            // 1. Limpar qualquer registro que use este CPF (limpo ou formatado) para este mês/ano/categoria
+            // Isso evita o erro de "unique_document_sync"
+            await supabase.from('documents').delete()
+              .eq('year', year).eq('month', month).eq('category', category)
+              .or(`owner_cpf.eq."${cleanCpf}",owner_cpf.eq."${formattedCpf}"`);
 
-          const { data: existing } = await supabase.from('documents')
-            .select('id')
-            .eq('year', year).eq('month', month).eq('category', category)
-            .or(`owner_cpf.eq."${cleanCpf}",owner_cpf.eq."${formattedCpf}"`)
-            .maybeSingle();
+            // 2. Inserir o novo registro (priorizando o CPF limpo que é o padrão de 2026)
+            const docData = { 
+              owner_cpf: cleanCpf, 
+              year, month, category, 
+              filename: normalizedName, 
+              file_path: cloudPath 
+            };
 
-          if (existing?.id) {
-            await supabase.from('documents').update(docData).eq('id', existing.id);
-            console.log(`  [OK] Registro atualizado para ${employee.name}`);
-          } else {
             const { error: insErr } = await supabase.from('documents').insert(docData);
+            
             if (insErr) {
-              // Failback para CPF formatado (Regras de FK antigas)
+              // Failback caso o banco exija o CPF formatado (fk_owner)
               docData.owner_cpf = formattedCpf;
               const { error: insErr2 } = await supabase.from('documents').insert(docData);
-              if (insErr2) throw new Error(`Falha no vínculo (FK): ${insErr2.message}`);
+              if (insErr2) throw insErr2;
             }
-            console.log(`  [OK] Novo registro criado para ${employee.name}`);
+            
+            console.log(`  [OK] Sincronizado: ${employee.name} (${month}/${year})`);
+            totalSynced++;
+          } catch (dbEx: any) {
+            console.error(`  [!] Falha no banco para ${employee.name}:`, dbEx.message);
+            errorCount++;
           }
-          
-          totalSynced++;
         } catch (e: any) {
           console.error(`  [!] Erro no arquivo ${file.name}:`, e?.message || 'Erro Desconhecido');
           errorCount++;
