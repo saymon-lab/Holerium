@@ -46,6 +46,7 @@ serve(async (req) => {
       const isDIRF = folder.name.match(/(DIRF|RENDIMENTOS)-(\d{4})/i);
       
       if (isDIRF) {
+        // Para DIRF, tenta pegar o ano do nome da pasta ou do arquivo depois
         monthFolders.push({ id: folder.id, name: folder.name, month: '16', year: isDIRF[2] });
       } else if (isFullMonth) {
         monthFolders.push({ id: folder.id, name: folder.name, month: isFullMonth[1], year: isFullMonth[2] });
@@ -100,7 +101,14 @@ serve(async (req) => {
         const normalizedName = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         const cleanCpf = employee.cpf.replace(/\D/g, '');
         const formattedCpf = employee.cpf;
-        const cloudPath = `${formattedCpf}/${year}/${month}/${normalizedName}`;
+        
+        let fileYear = year;
+        if (category === 'rendimentos') {
+          const yMatch = file.name.match(/(\d{4})/);
+          if (yMatch) fileYear = yMatch[1];
+        }
+
+        const cloudPath = `${formattedCpf}/${fileYear}/${month}/${normalizedName}`;
 
         try {
           console.log(`[PROCESSANDO] ${year}/${month} - ${file.name}`);
@@ -111,17 +119,16 @@ serve(async (req) => {
           // 2. Upload para Supabase Storage
           await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
 
-          // 3. LIMPEZA SEGURA: Só deleta se chegamos aqui
-          const matchCriteria = { owner_cpf: cleanCpf, year, month, category };
-          await supabase.from('documents').delete().match(matchCriteria);
+          // 3. LIMPEZA AGRESSIVA: Remove qualquer registro anterior com o MESMO NOME de arquivo para este usuário
+          // Isso corrige casos onde o arquivo foi detectado com ano/mês errado anteriormente.
+          await supabase.from('documents').delete().match({ owner_cpf: cleanCpf, filename: normalizedName });
           
-          // Tentativa com CPF formatado também (por segurança de migração)
           if (cleanCpf !== formattedCpf) {
-            await supabase.from('documents').delete().match({ owner_cpf: formattedCpf, year, month, category });
+            await supabase.from('documents').delete().match({ owner_cpf: formattedCpf, filename: normalizedName });
           }
 
           // 4. INSERÇÃO DO NOVO REGISTRO
-          const docData = { owner_cpf: cleanCpf, year, month, category, filename: normalizedName, file_path: cloudPath };
+          const docData = { owner_cpf: cleanCpf, year: fileYear, month, category, filename: normalizedName, file_path: cloudPath };
           const { error: insErr } = await supabase.from('documents').insert(docData);
           
           if (insErr) {

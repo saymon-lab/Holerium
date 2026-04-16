@@ -347,8 +347,16 @@ export default function EmployeeRegistry() {
             if (isRendimentos) {
               month = '16';
               category = 'rendimentos';
-              const yMatch = fullPathNorm.match(/(\d{4})/);
-              if (yMatch) year = yMatch[1];
+              // Prioriza o ano que está no NOME do arquivo para rendimentos
+              const fileNameNorm = normalize(entry.name);
+              const yMatchFile = fileNameNorm.match(/(\d{4})/);
+              const yMatchPath = fullPathNorm.match(/(\d{4})/);
+              
+              if (yMatchFile) {
+                year = yMatchFile[1];
+              } else if (yMatchPath) {
+                year = yMatchPath[1];
+              }
             } else if (fullPathNorm.includes('FERIAS')) {
               month = '15';
               category = 'ferias';
@@ -441,15 +449,15 @@ export default function EmployeeRegistry() {
         // REGRA DE ARQUIVO UNICO: Limpeza por ID antes de Upsert
         const { data: conflicts } = await supabase
           .from('documents')
-          .select('id')
-          .eq('owner_cpf', employee.cpf)
-          .eq('year', item.year)
-          .eq('month', item.month);
-
-        if (conflicts && conflicts.length > 0) {
-          for (const conflict of conflicts) {
-            await supabase.from('documents').delete().eq('id', conflict.id);
-          }
+        try {
+          // LIMPEZA AGRESSIVA: Antes de inserir, remove qualquer registro que tenha o MESMO NOME de arquivo para este usuário
+          // Isso garante que se o ano foi detectado errado antes, ele seja limpo agora.
+          await supabase
+            .from('documents')
+            .delete()
+            .match({ owner_cpf: employee.cpf, filename: normalizedFileName });
+        } catch (e) {
+          console.error("Erro na limpeza pré-inserção:", e);
         }
 
         const { error: dbErr } = await supabase
