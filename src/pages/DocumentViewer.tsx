@@ -226,8 +226,10 @@ export default function DocumentViewer() {
                 <FileText className="w-8 h-8" />
               </div>
               <div className="flex flex-col">
-                <h4 className="font-bold text-xl text-on-surface">Exercício {doc.year}</h4>
-                <p className="text-[10px] text-secondary-variant font-bold uppercase tracking-widest mb-2">Informe Anual</p>
+                <h4 className="font-bold text-lg text-on-surface leading-tight mb-1">
+                  {doc.filename?.replace(/\.pdf$/i, '') || `Exercício ${doc.year}`}
+                </h4>
+                <p className="text-[10px] text-secondary-variant font-bold uppercase tracking-widest mb-2">Documento Oficial</p>
                 <div className="flex items-center gap-1.5 text-[10px] font-black text-emerald-600 uppercase tracking-tight">
                   <ShieldCheck className="w-3 h-3" />
                   Disponível para Visualização
