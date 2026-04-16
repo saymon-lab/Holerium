@@ -539,15 +539,19 @@ export default function EmployeeRegistry() {
             <div className="flex items-center gap-3">
               <button
                 onClick={async () => {
-                  if (confirm("ATENÇÃO: Isso apagará TODOS os registros de documentos (Holerites/Rendimentos) do banco de dados. Os arquivos no Cloud Storage NÃO serão apagados. Deseja continuar?")) {
-                    const { error } = await supabase.from('documents').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                  if (confirm("Deseja apagar apenas os registros de 'Meus Rendimentos' para corrigir os anos? Os Holerites NÃO serão afetados.")) {
+                    const { error } = await supabase
+                      .from('documents')
+                      .delete()
+                      .or('category.eq.rendimentos,month.eq.16');
+                    
                     if (error) alert("Erro ao limpar: " + error.message);
-                    else alert("Banco de dados de documentos limpo com sucesso! Agora você pode sincronizar novamente.");
+                    else alert("Banco de dados de Rendimentos limpo! Agora você pode sincronizar a pasta DIRF-2025.");
                   }
                 }}
                 className="flex items-center gap-2 px-6 py-3 bg-red-50 text-red-600 rounded-2xl font-bold hover:bg-red-600 hover:text-white transition-all shadow-sm"
               >
-                Limpar Banco
+                Limpar Rendimentos
               </button>
               
               <button
