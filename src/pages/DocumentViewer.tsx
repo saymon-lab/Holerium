@@ -94,12 +94,21 @@ export default function DocumentViewer() {
 
       if (dbErr) throw dbErr;
 
-      console.log('Documentos encontrados:', documentsData);
-      setCloudDocuments(documentsData || []);
+      const processedDocs = (documentsData || []).map(doc => ({
+        ...doc,
+        category: String(doc.category || '').toLowerCase().trim(),
+        year: String(doc.year || '').trim(),
+        month: String(doc.month || '').trim().padStart(2, '0')
+      }));
 
-      // Extrair anos únicos (APENAS PARA HOLERITES, EXCLUI RENDIMENTOS)
+      console.log(`[DEBUG] Documentos carregados: ${processedDocs.length} registros.`);
+      setCloudDocuments(processedDocs);
+
+      // Extrair anos únicos (EXCLUI RENDIMENTOS E MÊS 16)
       const foundYears = new Set<string>();
-      documentsData?.filter(doc => String(doc.month) !== '16' && doc.category !== 'rendimentos').forEach(doc => foundYears.add(doc.year));
+      processedDocs
+        .filter(doc => doc.month !== '16' && doc.category !== 'rendimentos')
+        .forEach(doc => foundYears.add(doc.year));
       const sortedYears = Array.from(foundYears).sort((a, b) => b.localeCompare(a));
       setYears(sortedYears);
 
@@ -142,22 +151,22 @@ export default function DocumentViewer() {
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
-
   // 3. Atualizar meses disponíveis quando o ano for trocado ou os documentos carregarem
   useEffect(() => {
     if (viewState === 'months' && selectedYear && cloudDocuments.length > 0) {
       const monthsInYear = cloudDocuments
-        .filter(doc => String(doc.year) === String(selectedYear) && String(doc.month) !== '16' && doc.category !== 'rendimentos')
+        .filter(doc => doc.year === String(selectedYear).trim() && doc.month !== '16' && doc.category !== 'rendimentos')
         .map(doc => {
-          const mIndex = parseInt(doc.month) - 1;
-          return months[mIndex];
+          const mNum = parseInt(doc.month);
+          if (isNaN(mNum) || mNum < 1 || mNum > 15) return null;
+          return months[mNum - 1];
         })
-        .filter(Boolean);
+        .filter(Boolean) as string[];
 
-      console.log('Meses disponíveis em ' + selectedYear + ':', monthsInYear);
+      console.log(`[DEBUG] Meses disponíveis em ${selectedYear}:`, monthsInYear);
       setAvailableMonths(Array.from(new Set(monthsInYear)));
     }
-  }, [viewState, selectedYear, cloudDocuments]);
+  }, [selectedYear, cloudDocuments, viewState]);
 
   // 4. Carregar o PDF quando chegar no estado 'document'
   useEffect(() => {
@@ -304,7 +313,16 @@ export default function DocumentViewer() {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
         {months.filter(m => m !== 'Comprovante de Rendimentos').map(month => {
-          const isAvailable = availableMonths.includes(month);
+          const mIndex = months.indexOf(month) + 1;
+          const monthNum = mIndex.toString().padStart(2, '0');
+          // Busca direta e infalível nos documentos carregados
+          const docForMonth = cloudDocuments.find(d => 
+            d.year === String(selectedYear).trim() && 
+            (d.month === monthNum || parseInt(d.month) === mIndex) &&
+            d.category !== 'rendimentos'
+          );
+          
+          const isAvailable = !!docForMonth;
           return (
             <motion.button
               whileHover={isAvailable ? { y: -4 } : {}}
@@ -312,12 +330,8 @@ export default function DocumentViewer() {
               key={month}
               onClick={() => {
                 if (isAvailable) {
-                  const mIndex = months.indexOf(month) + 1;
-                  const monthNum = mIndex.toString().padStart(2, '0');
-                  const doc = cloudDocuments.find(d => String(d.year) === String(selectedYear) && String(d.month) === monthNum);
-                  
                   setSelectedMonth(month);
-                  setSelectedDocument(doc || null);
+                  setSelectedDocument(docForMonth);
                   setViewState('document');
                 }
               }}
