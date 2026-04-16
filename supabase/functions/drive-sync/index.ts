@@ -56,7 +56,10 @@ serve(async (req) => {
       }
     }
 
-    console.log(`[BOT] Pastas Candidatas: ${monthFolders.length}`);
+    // ORDENAÇÃO: Processar os meses mais recentes primeiro (2026 antes de 2025)
+    monthFolders.sort((a, b) => b.name.localeCompare(a.name));
+
+    console.log(`[BOT] Pastas Candidatas: ${monthFolders.length} (Priorizando 2026)`);
     const startTime = Date.now();
 
     for (const folder of monthFolders) {
