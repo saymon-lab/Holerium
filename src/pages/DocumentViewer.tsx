@@ -158,13 +158,13 @@ export default function DocumentViewer() {
 
   const renderMonths = () => (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center gap-5 mb-10">
-        <button onClick={() => { setViewState('years'); setSelectedYear(null); }} className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10">
+        <button onClick={() => { setViewState('years'); setSelectedYear(null); }} className="w-fit flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold shrink-0">
           <ArrowLeft className="w-5 h-5" /> Voltar
         </button>
         <div>
-          <h2 className="text-4xl font-extrabold text-on-surface">Competência {selectedYear}</h2>
-          <p className="text-secondary text-lg">Selecione o mês desejado.</p>
+          <h2 className="text-2xl sm:text-4xl font-extrabold text-on-surface leading-tight">Competência {selectedYear}</h2>
+          <p className="text-secondary text-sm sm:text-lg">Selecione o mês desejado.</p>
         </div>
       </div>
 
@@ -180,16 +180,44 @@ export default function DocumentViewer() {
           const isAvailable = !!doc;
 
           return (
-            <motion.button key={month} whileHover={isAvailable ? { y: -4 } : {}} onClick={() => { if (isAvailable) { setSelectedMonth(month); setSelectedDocument(doc); setViewState('document'); } }}
-              className={cn("bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-5", isAvailable ? "border-emerald-500/30" : "opacity-60 grayscale cursor-not-allowed")}>
-              <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", isAvailable ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
-                {isAvailable ? <FileText /> : <Lock />}
-              </div>
-              <div className="flex flex-col text-left">
-                <span className={cn("font-bold text-lg", isAvailable ? "text-on-surface" : "text-slate-400")}>{month}</span>
-                <span className={cn("text-[10px] font-bold uppercase", isAvailable ? "text-emerald-600" : "text-slate-400")}>{isAvailable ? "Disponível" : "Indisponível"}</span>
-              </div>
-            </motion.button>
+            <motion.div key={month} className="relative group">
+              <motion.button whileHover={isAvailable ? { y: -4 } : {}} onClick={() => { if (isAvailable) { setSelectedMonth(month); setSelectedDocument(doc); setViewState('document'); } }}
+                className={cn("w-full bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-5", isAvailable ? "border-emerald-500/30" : "opacity-60 grayscale cursor-not-allowed")}>
+                <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", isAvailable ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
+                  {isAvailable ? <FileText /> : <Lock />}
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className={cn("font-bold text-lg", isAvailable ? "text-on-surface" : "text-slate-400")}>{month}</span>
+                  <span className={cn("text-[10px] font-bold uppercase", isAvailable ? "text-emerald-600" : "text-slate-400")}>{isAvailable ? "Disponível" : "Indisponível"}</span>
+                </div>
+              </motion.button>
+              
+              {isAvailable && (
+                <a 
+                  href={pdfUrl || '#'} 
+                  download={`${month}-${selectedYear}.pdf`}
+                  onClick={(e) => {
+                    // Prevenir abertura do documento ao clicar no download
+                    e.stopPropagation();
+                    // Se não tiver pdfUrl ainda, não baixa (vai abrir no useEffect do componente ou via link direto se já houver)
+                    if (doc?.file_path) {
+                      const { data } = supabase.storage.from('receipts').getPublicUrl(doc.file_path);
+                      if (data?.publicUrl) {
+                        const link = document.createElement('a');
+                        link.href = data.publicUrl;
+                        link.download = `${month}-${selectedYear}.pdf`;
+                        link.target = "_blank";
+                        link.click();
+                      }
+                    }
+                  }}
+                  className="absolute top-4 right-4 p-2 bg-slate-50 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-full transition-all"
+                  title="Baixar PDF"
+                >
+                  <Download className="w-4 h-4" />
+                </a>
+              )}
+            </motion.div>
           );
         })}
       </div>
@@ -198,13 +226,13 @@ export default function DocumentViewer() {
 
   const renderRendimentos = () => (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center gap-5 mb-10">
-        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10">
+        <button onClick={() => navigate('/dashboard')} className="w-fit flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold shrink-0">
           <ArrowLeft className="w-5 h-5" /> Voltar
         </button>
         <div>
-          <h2 className="text-5xl font-extrabold text-on-surface">Meus Rendimentos</h2>
-          <p className="text-secondary text-lg">Documentos anuais para declaração de IRPF.</p>
+          <h2 className="text-2xl sm:text-5xl font-extrabold text-on-surface leading-tight">Meus Rendimentos</h2>
+          <p className="text-secondary text-sm sm:text-lg">Documentos anuais para declaração de IRPF.</p>
         </div>
       </div>
 
@@ -235,6 +263,25 @@ export default function DocumentViewer() {
                   Disponível para Visualização
                 </div>
               </div>
+              <div 
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (doc?.file_path) {
+                    const { data } = supabase.storage.from('receipts').getPublicUrl(doc.file_path);
+                    if (data?.publicUrl) {
+                      const link = document.createElement('a');
+                      link.href = data.publicUrl;
+                      link.download = doc.filename;
+                      link.target = "_blank";
+                      link.click();
+                    }
+                  }
+                }}
+                className="ml-auto p-3 bg-slate-50 text-slate-400 hover:text-white hover:bg-primary rounded-2xl transition-all"
+                title="Baixar PDF"
+              >
+                <Download className="w-5 h-5" />
+              </div>
             </motion.button>
           ))}
       </div>
@@ -251,11 +298,11 @@ export default function DocumentViewer() {
 
   const renderYears = () => (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex items-center gap-5 mb-10">
-        <button onClick={() => navigate('/dashboard')} className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10">
+        <button onClick={() => navigate('/dashboard')} className="w-fit flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold shrink-0">
           <ArrowLeft className="w-5 h-5" /> Voltar
         </button>
-        <h2 className="text-5xl font-extrabold text-on-surface">Holerites</h2>
+        <h2 className="text-3xl sm:text-5xl font-extrabold text-on-surface leading-tight">Holerites</h2>
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
         {years.map(year => (
@@ -276,9 +323,22 @@ export default function DocumentViewer() {
       {viewState === 'rendimentos' && renderRendimentos()}
       {viewState === 'document' && (
         <div className="flex-1 flex flex-col gap-6">
-          <button onClick={() => setViewState('months')} className="w-fit flex items-center gap-2 px-4 py-2 rounded-full bg-white text-primary font-bold shadow-sm">
-            <ArrowLeft className="w-4 h-4" /> Voltar
-          </button>
+          <div className="flex items-center justify-between gap-4">
+            <button onClick={() => setViewState('months')} className="w-fit flex items-center gap-2 px-4 py-2 rounded-full bg-white text-primary font-bold shadow-sm active:scale-95 transition-transform">
+              <ArrowLeft className="w-4 h-4" /> Voltar
+            </button>
+            {pdfUrl && (
+              <a 
+                href={pdfUrl} 
+                download={`${selectedMonth}-${selectedYear}.pdf`}
+                target="_blank"
+                className="flex items-center gap-2 px-6 py-2.5 bg-primary text-white rounded-full font-bold shadow-lg shadow-primary/20 hover:scale-105 transition-transform"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Baixar PDF</span>
+              </a>
+            )}
+          </div>
           <iframe src={pdfUrl || ''} className="flex-1 rounded-3xl border-none min-h-[600px] bg-white shadow-inner" title="PDF Viewer" />
         </div>
       )}
