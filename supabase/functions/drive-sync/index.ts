@@ -10,7 +10,7 @@ const corsHeaders = {
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
 
-  console.log("--- INICIANDO SINCRONIZAÇÃO v3.0 ---");
+  console.log("--- SINCRONIZAÇÃO INTELIGENTE v4.0 ---");
   let totalSynced = 0;
   let errorCount = 0;
 
@@ -20,9 +20,6 @@ serve(async (req) => {
     const googleJsonStrRaw = Deno.env.get('GOOGLE_SERVICE_ACCOUNT') || '';
     const rootFolderId = Deno.env.get('ROOT_FOLDER_ID') || '1_6thKMpLPSG_3ZPKF0640HDJeFxGyLjr';
 
-    if (!supabaseUrl || !supabaseServiceKey) throw new Error("SUPABASE_URL ou KEY ausente.");
-    if (!googleJsonStrRaw) throw new Error("GOOGLE_SERVICE_ACCOUNT ausente.");
-
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
     let googleConfig;
@@ -31,50 +28,46 @@ serve(async (req) => {
       if (!jsonContent.startsWith('{')) jsonContent = atob(jsonContent);
       googleConfig = JSON.parse(jsonContent);
     } catch {
-      throw new Error("Falha ao processar chave do Google JSON.");
+      throw new Error("Chave Google inválida.");
     }
 
-    console.log("[BOT] Autenticando com Google Drive...");
     const token = await getGoogleToken(googleConfig);
 
-    console.log("[BOT] Buscando funcionários no banco...");
-    const { data: employees, error: empErr } = await supabase.from('employees').select('name, cpf');
-    if (empErr) throw new Error(`Erro ao listar funcionários: ${empErr.message}`);
-
+    const { data: employees } = await supabase.from('employees').select('name, cpf');
+    
     const monthFolders: any[] = [];
-    console.log("[BOT] Mapeando pastas no Drive...");
+    console.log("[BOT] Mapeando pastas do Drive...");
     const rootChildren = await listFolders(rootFolderId, token);
 
     for (const folder of rootChildren) {
       const isYear = folder.name.match(/^20\d{2}$/);
-      const isMonth = folder.name.match(/(\d{2})[-/](\d{4})/);
-      if (isMonth) {
-        monthFolders.push(folder);
+      const isFullMonth = folder.name.match(/(\d{2})[-/](\d{4})/);
+      
+      if (isFullMonth) {
+        monthFolders.push({ id: folder.id, name: folder.name, month: isFullMonth[1], year: isFullMonth[2] });
       } else if (isYear) {
+        const year = isYear[0];
         const subFolders = await listFolders(folder.id, token);
-        monthFolders.push(...subFolders);
+        for (const sub of subFolders) {
+          const mMatch = sub.name.match(/^(\d{2})$/) || sub.name.match(/^(\d{2})[-/]/);
+          if (mMatch) {
+            monthFolders.push({ id: sub.id, name: sub.name, month: mMatch[1], year: year });
+          }
+        }
       }
     }
 
-    // ORDENAÇÃO: Processar os meses mais recentes primeiro (2026 antes de 2025)
-    monthFolders.sort((a, b) => b.name.localeCompare(a.name));
+    // Ordenar para processar 2026 primeiro
+    monthFolders.sort((a, b) => b.year.localeCompare(a.year) || b.month.localeCompare(a.month));
 
-    console.log(`[BOT] Pastas Candidatas: ${monthFolders.length} (Priorizando 2026)`);
+    console.log(`[BOT] Pastas Candidatas: ${monthFolders.length} (Priorizando mais recentes)`);
     const startTime = Date.now();
 
     for (const folder of monthFolders) {
-      if (Date.now() - startTime > 105000) {
-        console.log("[BOT] Limite de tempo próximo. Encerrando ciclo.");
-        break;
-      }
+      if (Date.now() - startTime > 105000) break;
 
-      let month = '01', year = '2026', category = 'holerite';
-      const folderMatch = folder.name.match(/(\d{2})[-/](\d{4})/);
-      if (folderMatch) {
-         month = folderMatch[1];
-         year = folderMatch[2];
-      }
-      
+      const { month, year } = folder;
+      let category = 'holerite';
       const folderUpper = folder.name.toUpperCase();
       if (folderUpper.includes('FERIAS')) category = 'ferias';
       else if (folderUpper.includes('DIRF') || folderUpper.includes('RENDIMENTOS')) category = 'rendimentos';
@@ -90,128 +83,68 @@ serve(async (req) => {
         const cloudPath = `${formattedCpf}/${year}/${month}/${normalizedName}`;
 
         try {
-          console.log(`[PROCESSANDO] ${file.name} -> ${employee.name}`);
+          console.log(`[PROCESSANDO] ${year}/${month} - ${file.name}`);
           const blob = await downloadFile(file.id, token);
-          const { error: stoErr } = await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
-          if (stoErr && stoErr.message !== 'The resource already exists') throw stoErr;
+          await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
 
-          // Registro no Banco - Estratégia "Força Bruta"
-          try {
-            // 1. Limpeza Individual (Garante que nenhum fantasma de CPF limpo ou formatado sobreviva)
-            await supabase.from('documents').delete()
-              .eq('year', year).eq('month', month).eq('category', category)
-              .eq('owner_cpf', cleanCpf);
-            
-            await supabase.from('documents').delete()
-              .eq('year', year).eq('month', month).eq('category', category)
-              .eq('owner_cpf', formattedCpf);
+          // Limpeza Força Bruta
+          await supabase.from('documents').delete().eq('owner_cpf', cleanCpf).eq('year', year).eq('month', month).eq('category', category);
+          await supabase.from('documents').delete().eq('owner_cpf', formattedCpf).eq('year', year).eq('month', month).eq('category', category);
 
-            // 2. Preparar os dados (Priorizamos o Limpo para 2026, mas temos o Fallback)
-            const docData = { 
-              owner_cpf: cleanCpf, 
-              year, month, category, 
-              filename: normalizedName, 
-              file_path: cloudPath 
-            };
-
-            // 3. Tenta Inserir (Limpo)
-            const { error: insErr } = await supabase.from('documents').insert(docData);
-            
-            if (insErr) {
-              // Se falhou por chave duplicada mesmo após delete (insistente), apagamos de novo por garantia
-              if (insErr.message.includes('unique')) {
-                 await supabase.from('documents').delete().eq('year', year).eq('month', month).eq('category', category).eq('owner_cpf', cleanCpf);
-                 await supabase.from('documents').insert(docData);
-              } 
-              // Se falhou por FK (exige pontos), tenta o formato com pontos
-              else {
-                docData.owner_cpf = formattedCpf;
-                const { error: insErr2 } = await supabase.from('documents').insert(docData);
-                if (insErr2) throw insErr2;
-              }
-            }
-            
-            console.log(`  [SUCESSO] Sincronizado: ${employee.name} (${month}/${year})`);
-            totalSynced++;
-          } catch (dbEx: any) {
-            console.error(`  [!] Falha fatal no banco para ${employee.name}:`, dbEx.message);
-            errorCount++;
+          // Inserção com fallback
+          const docData = { owner_cpf: cleanCpf, year, month, category, filename: normalizedName, file_path: cloudPath };
+          const { error: insErr } = await supabase.from('documents').insert(docData);
+          if (insErr) {
+            docData.owner_cpf = formattedCpf;
+            await supabase.from('documents').insert(docData);
           }
+          
+          totalSynced++;
         } catch (e: any) {
-          console.error(`  [!] Erro no arquivo ${file.name}:`, e?.message || 'Erro Desconhecido');
+          console.error(`  [!] Erro em ${file.name}:`, e.message);
           errorCount++;
         }
       }
     }
 
-    return new Response(JSON.stringify({ status: "success", totalSynced, errorCount }), { 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ status: "done", totalSynced }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (err: any) {
-    const errorMsg = err?.message || 'Erro inesperado na execução';
-    console.error("[ERRO CRÍTICO]", errorMsg);
-    return new Response(JSON.stringify({ status: "error", message: errorMsg }), { 
-      status: 200, 
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-    });
+    return new Response(JSON.stringify({ error: err.message }), { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   }
 });
 
 async function getGoogleToken(config: any) {
   const now = Math.floor(Date.now() / 1000);
-  const payload = {
-    iss: config.client_email,
-    scope: "https://www.googleapis.com/auth/drive.readonly",
-    aud: config.token_uri,
-    exp: now + 3600,
-    iat: now,
-  };
-
+  const payload = { iss: config.client_email, scope: "https://www.googleapis.com/auth/drive.readonly", aud: config.token_uri, exp: now + 3600, iat: now };
   const pem = config.private_key.replace(/-----BEGIN PRIVATE KEY-----/, "").replace(/-----END PRIVATE KEY-----/, "").replace(/\s/g, "");
   const binaryDer = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
-
-  const key = await crypto.subtle.importKey(
-    "pkcs8", binaryDer.buffer,
-    { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" },
-    false, ["sign"]
-  );
-
+  const key = await crypto.subtle.importKey("pkcs8", binaryDer.buffer, { name: "RSASSA-PKCS1-v1_5", hash: "SHA-256" }, false, ["sign"]);
   const jwt = await djwt.create({ alg: "RS256", typ: "JWT" }, payload, key);
   const resp = await fetch(config.token_uri, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: `grant_type=urn:ietf:params:oauth:grant-type:jwt-bearer&assertion=${jwt}`,
   });
-
   const data = await resp.json();
-  if (!data || data.error) throw new Error(data?.error_description || "Erro de login no Google");
   return data.access_token;
 }
 
 async function listFolders(parent: string, token: string) {
   const q = encodeURIComponent(`'${parent}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`);
-  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, { headers: { Authorization: `Bearer ${token}` } });
   const data = await resp.json();
   return data?.files || [];
 }
 
 async function listFiles(parent: string, token: string) {
   const q = encodeURIComponent(`'${parent}' in parents and mimeType = 'application/pdf' and trashed = false`);
-  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`, { headers: { Authorization: `Bearer ${token}` } });
   const data = await resp.json();
   return data?.files || [];
 }
 
 async function downloadFile(id: string, token: string) {
-  const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, {
-    headers: { Authorization: `Bearer ${token}` }
-  });
-  if (!resp.ok) throw new Error("Falha no download");
+  const resp = await fetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`, { headers: { Authorization: `Bearer ${token}` } });
   return await resp.blob();
 }
 
