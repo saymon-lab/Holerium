@@ -516,7 +516,7 @@ export default function EmployeeRegistry() {
   };
 
   return (
-    <div className="p-10 flex-1 flex flex-col gap-8 animate-fade-in">
+    <div className="p-4 md:p-10 flex-1 flex flex-col gap-6 md:gap-8 animate-fade-in">
       <div className="flex items-center gap-5 mb-2">
         <button 
           onClick={() => navigate('/dashboard')}
@@ -526,15 +526,15 @@ export default function EmployeeRegistry() {
           <ArrowLeft className="w-5 h-5" />
         </button>
         <section className="space-y-1">
-          <h2 className="text-4xl md:text-5xl font-extrabold font-headline text-on-surface tracking-tight">Gerenciamento de Funcionários</h2>
+          <h2 className="text-2xl md:text-5xl font-extrabold font-headline text-on-surface tracking-tight">Gerenciamento de Funcionários</h2>
         </section>
       </div>
 
-      <section className="flex justify-between items-end">
+      <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
         <div className="space-y-2">
-          <p className="text-secondary font-body max-w-2xl">Gerencie o acesso seguro a documentos e perfis de identidade para o ecossistema corporativo.</p>
+          <p className="text-secondary font-body max-w-2xl text-sm md:text-base">Gerencie o acesso seguro a documentos e perfis de identidade para o ecossistema corporativo.</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <input 
             type="file" 
             accept=".csv" 
@@ -544,12 +544,12 @@ export default function EmployeeRegistry() {
           />
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-6 py-3 rounded-full font-bold active:scale-95 transition-all shadow-sm"
+            className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-6 py-3 rounded-full font-bold active:scale-95 transition-all shadow-sm w-full sm:w-auto"
           >
             <Upload className="w-5 h-5" />
             <span>Importar CSV</span>
           </button>
-          <button className="flex items-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-bold hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-primary/20">
+          <button className="flex items-center justify-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-bold hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-primary/20 w-full sm:w-auto">
             <Plus className="w-5 h-5" />
             <span>Novo Funcionário</span>
           </button>
@@ -557,18 +557,18 @@ export default function EmployeeRegistry() {
       </section>
 
       <div className="bg-surface-container-lowest rounded-3xl overflow-hidden shadow-sm border border-surface-container-high">
-        <div className="p-6 border-b border-surface-container-high flex justify-between items-center bg-surface-container-low/30">
-          <div className="relative">
+        <div className="p-4 md:p-6 border-b border-surface-container-high flex flex-col sm:flex-row justify-between items-stretch sm:items-center bg-surface-container-low/30 gap-4">
+          <div className="relative w-full sm:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
             <input 
               type="text" 
               placeholder="Buscar por nome ou CPF..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10 pr-4 py-2 bg-white border border-surface-container-high rounded-full text-sm w-80 focus:ring-2 focus:ring-primary/20 transition-all"
+              className="pl-10 pr-4 py-2 bg-white border border-surface-container-high rounded-full text-sm w-full md:w-80 focus:ring-2 focus:ring-primary/20 transition-all"
             />
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 justify-end">
             <button className="p-2 hover:bg-surface-container rounded-lg transition-colors text-secondary">
               <MoreVertical className="w-5 h-5" />
             </button>
@@ -579,11 +579,11 @@ export default function EmployeeRegistry() {
           <table className="w-full text-left">
             <thead>
               <tr className="bg-surface-container-low/50">
-                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Perfil</th>
-                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Identificação (CPF)</th>
-                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Status</th>
-                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Senha</th>
-                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-right">Ações</th>
+                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Perfil</th>
+                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Identificação (CPF)</th>
+                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Status</th>
+                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Senha</th>
+                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-high">
@@ -592,7 +592,7 @@ export default function EmployeeRegistry() {
                 emp.cpf.includes(searchTerm)
               ).map((emp) => (
                 <tr key={emp.id} className="hover:bg-surface-container-high/20 transition-colors group">
-                  <td className="px-8 py-6">
+                  <td className="px-4 md:px-8 py-6">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 rounded-full bg-slate-200 overflow-hidden ring-2 ring-primary/5">
                         <img src={emp.avatar} alt={emp.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -603,8 +603,8 @@ export default function EmployeeRegistry() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-8 py-6 text-sm font-medium font-body text-on-surface-variant">{emp.cpf}</td>
-                  <td className="px-8 py-6 text-center">
+                  <td className="px-4 md:px-8 py-6 text-sm font-medium font-body text-on-surface-variant">{emp.cpf}</td>
+                  <td className="px-4 md:px-8 py-6 text-center">
                     <span className={cn(
                       "px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider",
                       emp.status === 'Ativo' ? "bg-tertiary-fixed text-on-tertiary-fixed-variant" : "bg-secondary-container text-on-secondary-container"
@@ -612,7 +612,7 @@ export default function EmployeeRegistry() {
                       {emp.status}
                     </span>
                   </td>
-                  <td className="px-8 py-6 text-center">
+                  <td className="px-4 md:px-8 py-6 text-center">
                     <div className="flex flex-col items-center">
                       <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-xl border border-slate-100 group/pass">
                         <span className={cn(
@@ -634,7 +634,7 @@ export default function EmployeeRegistry() {
                       </div>
                     </div>
                   </td>
-                  <td className="px-8 py-6 text-right">
+                  <td className="px-4 md:px-8 py-6 text-right">
                     <div className="flex justify-end gap-2 items-center">
                       {/* Travar o perfil mestre para quem não é Master Developer */}
                       {(emp.cpf === '000.000.000-00' || emp.role === 'superadmin' || emp.role === 'Desenvolvedor Geral') && !userIsMaster ? (
