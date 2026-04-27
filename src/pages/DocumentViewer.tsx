@@ -24,6 +24,8 @@ export default function DocumentViewer() {
   });
 
   const [viewState, setViewState] = useState<'years' | 'months' | 'document' | 'rendimentos' | 'rendimentos_years'>(() => {
+    // Se a rota for /rendimentos, inicia em rendimentos_years
+    if (location.pathname === '/rendimentos') return 'rendimentos_years';
     return (sessionStorage.getItem('doc_viewState') as any) || 'years';
   });
   const [selectedYear, setSelectedYear] = useState<string | null>(() => {
@@ -98,8 +100,18 @@ export default function DocumentViewer() {
   // Escutar mudanças de navegação para resetar o estado (Ex: Clicar no menu lateral)
   useEffect(() => {
     const state = location.state as any;
+    
+    // Auto-detectar modo pelo caminho da URL se não houver um estado de reset explícito
+    if (location.pathname === '/rendimentos' && viewState !== 'rendimentos' && viewState !== 'document' && viewState !== 'rendimentos_years') {
+      setViewState('rendimentos_years');
+      setSelectedYear(null);
+    } else if (location.pathname === '/documents' && viewState !== 'months' && viewState !== 'document' && viewState !== 'years') {
+      setViewState('years');
+      setSelectedYear(null);
+    }
+
     if (state?.reset) {
-      if (state?.rendimentos) {
+      if (location.pathname === '/rendimentos' || state?.rendimentos) {
         setViewState('rendimentos_years');
         setSelectedYear(null);
       } else {
@@ -181,13 +193,13 @@ export default function DocumentViewer() {
 
   const renderMonths = () => (
     <div className="space-y-8 animate-fade-in">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-10">
-        <button onClick={() => { setViewState('years'); setSelectedYear(null); }} className="w-fit flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-8 sm:mb-10">
+        <button onClick={() => { setViewState('years'); setSelectedYear(null); }} className="w-fit flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary shadow-sm border border-slate-100 font-bold shrink-0 tap-press transition-all">
           <ArrowLeft className="w-5 h-5" /> Voltar
         </button>
         <div>
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-on-surface leading-tight">Competência {selectedYear}</h2>
-          <p className="text-secondary text-sm sm:text-lg">Selecione o mês desejado.</p>
+          <h2 className="text-xl sm:text-4xl font-extrabold text-on-surface leading-tight">Competência {selectedYear}</h2>
+          <p className="text-secondary text-xs sm:text-lg">Selecione o mês desejado.</p>
         </div>
       </div>
 
@@ -205,12 +217,12 @@ export default function DocumentViewer() {
           return (
             <motion.div key={month} className="relative group">
               <motion.button whileHover={isAvailable ? { y: -4 } : {}} onClick={() => { if (isAvailable) { setSelectedMonth(month); setSelectedDocument(doc); setViewState('document'); } }}
-                className={cn("w-full bg-white p-6 rounded-2xl border shadow-sm flex items-center gap-5", isAvailable ? "border-emerald-500/30" : "opacity-60 grayscale cursor-not-allowed")}>
-                <div className={cn("w-14 h-14 rounded-full flex items-center justify-center", isAvailable ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
-                  {isAvailable ? <FileText /> : <Lock />}
+                className={cn("w-full bg-white p-5 sm:p-6 rounded-2xl border shadow-sm flex items-center gap-4 sm:gap-5 tap-press", isAvailable ? "border-emerald-500/30" : "opacity-60 grayscale cursor-not-allowed")}>
+                <div className={cn("w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shrink-0", isAvailable ? "bg-emerald-50 text-emerald-600" : "bg-slate-100 text-slate-400")}>
+                  {isAvailable ? <FileText className="w-5 h-5 sm:w-6 sm:h-6" /> : <Lock className="w-5 h-5 sm:w-6 sm:h-6" />}
                 </div>
-                <div className="flex flex-col text-left">
-                  <span className={cn("font-bold text-lg", isAvailable ? "text-on-surface" : "text-slate-400")}>{month}</span>
+                <div className="flex flex-col text-left min-w-0">
+                  <span className={cn("font-bold text-base sm:text-lg truncate", isAvailable ? "text-on-surface" : "text-slate-400")}>{month}</span>
                   <span className={cn("text-[10px] font-bold uppercase", isAvailable ? "text-emerald-600" : "text-slate-400")}>{isAvailable ? "Disponível" : "Indisponível"}</span>
                 </div>
               </motion.button>
@@ -362,7 +374,7 @@ export default function DocumentViewer() {
   );
 
   return (
-    <div className="p-10 flex-1 flex flex-col">
+    <div className="p-4 sm:p-6 lg:p-10 flex-1 flex flex-col pt-4">
       {viewState === 'years' && renderYears()}
       {viewState === 'months' && renderMonths()}
       {viewState === 'rendimentos_years' && renderRendimentosYears()}
@@ -376,7 +388,7 @@ export default function DocumentViewer() {
                } else {
                  setViewState('months');
                }
-            }} className="w-fit flex items-center gap-2 px-4 py-2 rounded-full bg-white text-primary font-bold shadow-sm active:scale-95 transition-transform">
+            }} className="w-fit flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-primary font-bold shadow-sm tap-press transition-all border border-slate-100">
               <ArrowLeft className="w-4 h-4" /> Voltar
             </button>
             {selectedDocument?.file_path && (
@@ -389,7 +401,9 @@ export default function DocumentViewer() {
               </button>
             )}
           </div>
-          <iframe src={pdfUrl || ''} className="flex-1 rounded-3xl border-none min-h-[600px] bg-white shadow-inner" title="PDF Viewer" />
+          <div className="flex-1 rounded-3xl overflow-hidden bg-white shadow-inner border border-slate-100 relative min-h-[500px]">
+             <iframe src={pdfUrl || ''} className="absolute inset-0 w-full h-full border-none" title="PDF Viewer" />
+          </div>
         </div>
       )}
     </div>

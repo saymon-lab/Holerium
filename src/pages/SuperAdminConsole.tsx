@@ -27,9 +27,10 @@ import {
   FileUp,
   History,
   Lock,
-  Save
+  Save,
+  Hammer
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/src/lib/supabase';
 import { cn } from '@/src/lib/utils';
@@ -56,6 +57,11 @@ export default function SuperAdminConsole() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasMenuChanges, setHasMenuChanges] = useState(false);
   const [syncReferenceYear, setSyncReferenceYear] = useState(new Date().getFullYear().toString());
+  const [isCloudSyncing, setIsCloudSyncing] = useState(false);
+  const [showSyncModal, setShowSyncModal] = useState(false);
+  const [isMaintenanceMode, setIsMaintenanceMode] = useState(false);
+  const [allowedCpfs, setAllowedCpfs] = useState<string[]>([]);
+  const [isUpdatingMaintenance, setIsUpdatingMaintenance] = useState(false);
   const [menuPermissions, setMenuPermissions] = useState(() => {
     try {
       const saved = localStorage.getItem('menu_permissions_v1');
@@ -90,6 +96,44 @@ export default function SuperAdminConsole() {
     setHasMenuChanges(true);
   };
 
+  const triggerCloudSync = async () => {
+    try {
+      setIsCloudSyncing(true);
+      setShowSyncModal(true);
+      setSyncLogs([{ type: 'info', msg: 'Solicitando partida do robô na nuvem...' }]);
+      
+      // Limpa logs anteriores no banco para esta sessão
+      await supabase.from('sync_logs').delete().neq('id', 0);
+
+      // Inscreve no Realtime para receber os logs do Banco de Dados
+      const channel = supabase
+        .channel('schema-db-changes')
+        .on(
+          'postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'sync_logs' },
+          (payload) => {
+            const newLog = payload.new;
+            setSyncLogs(prev => [{ type: newLog.type, msg: newLog.message }, ...prev.slice(0, 49)]);
+          }
+        )
+        .subscribe();
+
+      // Dispara a Edge Function (agora com timeout maior no cliente se necessário)
+      const { data, error } = await supabase.functions.invoke('drive-sync');
+      
+      if (error) throw error;
+
+      setTimeout(() => {
+        supabase.removeChannel(channel);
+        setIsCloudSyncing(false);
+      }, 15000);
+
+    } catch (err: any) {
+      setSyncLogs(prev => [{ type: 'error', msg: `Falha no Robô: ${err.message}` }, ...prev]);
+      setIsCloudSyncing(false);
+    }
+  };
+
   const handleSavePermissions = () => {
     setIsSaving(true);
     localStorage.setItem('menu_permissions_v1', JSON.stringify(menuPermissions));
@@ -115,7 +159,85 @@ export default function SuperAdminConsole() {
       const devRoles = ['superadmin', 'Desenvolvedor Geral', 'Desenvolvedor Master'];
       setIsDeveloper(devRoles.includes(user.role));
     }
+    fetchMaintenanceMode();
   }, []);
+
+  const fetchMaintenanceMode = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('value')
+        .eq('key', 'maintenance_mode')
+        .single();
+      
+      if (data) {
+        setIsMaintenanceMode(data.value?.active || false);
+        setAllowedCpfs(data.value?.allowed_cpfs || []);
+      }
+    } catch (err) {
+      console.error('Erro ao buscar modo manutenção:', err);
+    }
+  };
+
+  const toggleMaintenanceMode = async () => {
+    const confirmMsg = isMaintenanceMode 
+      ? 'Deseja DESATIVAR o Modo de Manutenção? O site voltará ao normal para todos.' 
+      : 'Deseja ATIVAR o Modo de Manutenção? Apenas desenvolvedores terão acesso.';
+    
+    if (!confirm(confirmMsg)) return;
+
+    if (!isMaintenanceMode) {
+      const pass = prompt('Para ATIVAR, insira a senha master (dev2026):');
+      if (pass !== 'dev2026') {
+        alert('Senha incorreta.');
+        return;
+      }
+    }
+
+    try {
+      setIsUpdatingMaintenance(true);
+      const newValue = { active: !isMaintenanceMode, allowed_cpfs: allowedCpfs };
+      
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({ key: 'maintenance_mode', value: newValue });
+
+      if (error) throw error;
+      
+      setIsMaintenanceMode(!isMaintenanceMode);
+      alert(`Modo Manutenção ${!isMaintenanceMode ? 'ATIVADO' : 'DESATIVADO'} com sucesso!`);
+    } catch (err: any) {
+      alert('Erro ao atualizar: ' + err.message);
+    } finally {
+      setIsUpdatingMaintenance(false);
+    }
+  };
+
+  const toggleCpfPermission = async (cpf: string) => {
+    try {
+      setIsUpdatingMaintenance(true);
+      let newAllowed = [...allowedCpfs];
+      if (newAllowed.includes(cpf)) {
+        newAllowed = newAllowed.filter(c => c !== cpf);
+      } else {
+        newAllowed.push(cpf);
+      }
+
+      const { error } = await supabase
+        .from('system_settings')
+        .upsert({ 
+          key: 'maintenance_mode', 
+          value: { active: isMaintenanceMode, allowed_cpfs: newAllowed } 
+        });
+
+      if (error) throw error;
+      setAllowedCpfs(newAllowed);
+    } catch (err: any) {
+      alert('Erro ao atualizar permissão: ' + err.message);
+    } finally {
+      setIsUpdatingMaintenance(false);
+    }
+  };
 
   const addLog = (type: 'info' | 'error' | 'success' | 'update', msg: string) => {
     const newLog = { type, msg };
@@ -789,7 +911,7 @@ export default function SuperAdminConsole() {
       calculateStorageUsage();
 
       // GERAR ARQUIVO DE LOG PARA O USUÁRIO
-      const logHeader = `RELATÓRIO DE SINCRONIZAÇÃO - PORTAL SUPER\nData: ${new Date().toLocaleString()}\nTotal Processado: ${filesToUpload.length}\n------------------------------------------\n\n`;
+      const logHeader = `RELATÓRIO DE SINCRONIZAÇÃO - PORTAL\nData: ${new Date().toLocaleString()}\nTotal Processado: ${filesToUpload.length}\n------------------------------------------\n\n`;
       const logBody = fullHistory.map(l => `[${l.type.toUpperCase()}] ${l.msg}`).join('\n');
       const blob = new Blob([logHeader + logBody], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
@@ -818,7 +940,7 @@ export default function SuperAdminConsole() {
       <div className="flex items-center gap-5 mb-2">
         <button 
           onClick={() => navigate('/dashboard')}
-          className="w-14 h-14 flex items-center justify-center rounded-full bg-white hover:bg-surface-container transition-colors text-primary shadow-sm active:scale-95 border border-surface-container-high"
+          className="w-14 h-14 flex items-center justify-center rounded-full bg-white hover:bg-surface-container transition-colors text-primary shadow-sm active:scale-95 border border-surface-container-high tap-press"
         >
           <ArrowLeft className="w-6 h-6" />
         </button>
@@ -864,6 +986,31 @@ export default function SuperAdminConsole() {
                </div>
                <p className="text-[10px] text-on-surface-variant font-medium">{storageStats.text}</p>
             </div>
+          </div>
+
+          <div className="pt-2">
+            <button 
+              onClick={toggleMaintenanceMode}
+              disabled={isUpdatingMaintenance}
+              className={cn(
+                "w-full py-4 rounded-2xl font-black text-sm transition-all flex items-center justify-center gap-3 border-2 shadow-sm tap-press",
+                isMaintenanceMode 
+                  ? "bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100" 
+                  : "bg-slate-50 border-slate-200 text-slate-600 hover:bg-slate-100"
+              )}
+            >
+              {isUpdatingMaintenance ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : isMaintenanceMode ? (
+                <Shield className="w-5 h-5 fill-amber-500/10" />
+              ) : (
+                <Hammer className="w-5 h-5" />
+              )}
+              {isMaintenanceMode ? 'MODO MANUTENÇÃO ATIVO' : 'ATIVAR MANUTENÇÃO'}
+            </button>
+            <p className="text-[9px] text-center text-secondary font-bold uppercase tracking-widest mt-2">
+              {isMaintenanceMode ? 'Acessível apenas por Devs' : 'Todos os usuários acessam'}
+            </p>
           </div>
 
           <button 
@@ -925,6 +1072,15 @@ export default function SuperAdminConsole() {
               <RefreshCcw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
               Recalibrar Espaço (Sync DB)
             </button>
+
+            <button 
+              onClick={triggerCloudSync}
+              disabled={isCloudSyncing || loading}
+              className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-indigo-600/20 hover:scale-[1.02] active:scale-95 disabled:opacity-50 mt-2"
+            >
+              <CloudCog className={cn("w-5 h-5", isCloudSyncing && "animate-spin")} />
+              Sincronizar Nuvem (Robô)
+            </button>
           </div>
         </section>
 
@@ -964,18 +1120,33 @@ export default function SuperAdminConsole() {
                 </div>
 
                 <div className="flex items-center gap-2">
-                   <button 
-                    onClick={() => toggleAdminPrivilege(emp)}
-                    className={cn(
-                      "px-5 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2",
-                      emp.role === 'admin' 
-                        ? "bg-red-50 text-red-600 hover:bg-red-100" 
-                        : "bg-primary/10 text-primary hover:bg-primary/20"
-                    )}
-                   >
-                     {emp.role === 'admin' ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
-                     {emp.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
-                   </button>
+                    <button 
+                      onClick={() => toggleAdminPrivilege(emp)}
+                      className={cn(
+                        "px-4 py-2.5 rounded-xl font-bold text-[10px] transition-all flex items-center gap-2",
+                        emp.role === 'admin' 
+                          ? "bg-red-50 text-red-600 hover:bg-red-100" 
+                          : "bg-primary/10 text-primary hover:bg-primary/20"
+                      )}
+                    >
+                      {emp.role === 'admin' ? <UserX className="w-3.5 h-3.5" /> : <UserCheck className="w-3.5 h-3.5" />}
+                      {emp.role === 'admin' ? 'Remover Admin' : 'Tornar Admin'}
+                    </button>
+
+                    <button 
+                      onClick={() => toggleCpfPermission(emp.cpf)}
+                      disabled={isUpdatingMaintenance}
+                      className={cn(
+                        "px-4 py-2.5 rounded-xl font-bold text-[10px] transition-all flex items-center gap-2 border",
+                        allowedCpfs.includes(emp.cpf)
+                          ? "bg-amber-100 border-amber-300 text-amber-700 hover:bg-amber-200" 
+                          : "bg-white border-slate-200 text-slate-400 hover:border-amber-300/50 hover:text-amber-500"
+                      )}
+                      title={allowedCpfs.includes(emp.cpf) ? 'Revogar acesso na manutenção' : 'Permitir acesso na manutenção'}
+                    >
+                      <Hammer className={cn("w-3.5 h-3.5", allowedCpfs.includes(emp.cpf) && "fill-amber-500/20")} />
+                      {allowedCpfs.includes(emp.cpf) ? 'Acesso Liberado' : 'Bloqueado p/ Manut.'}
+                    </button>
                 </div>
               </div>
             ))}
@@ -1212,6 +1383,99 @@ export default function SuperAdminConsole() {
         </section>
 
       </div>
+
+      {/* Modal de Progresso da Sincronização (Herda layout premium) */}
+      <AnimatePresence>
+        {showSyncModal && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white w-full max-w-2xl rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-100"
+            >
+              <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-white">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-3xl flex items-center justify-center border border-indigo-100">
+                    <CloudCog className={cn("w-7 h-7", isCloudSyncing && "animate-spin")} />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 font-headline leading-tight">Monitor do Robô</h3>
+                    <p className="text-[10px] font-bold text-indigo-500 uppercase tracking-[0.2em] mt-0.5">Sincronização em Nuvem em Tempo Real</p>
+                  </div>
+                </div>
+                {!isCloudSyncing && (
+                  <button onClick={() => setShowSyncModal(false)} className="p-3 hover:bg-slate-50 rounded-2xl transition-all group">
+                    <X className="w-6 h-6 text-slate-300 group-hover:text-slate-600" />
+                  </button>
+                )}
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50 font-mono text-[11px] space-y-3 custom-scrollbar">
+                {syncLogs.length === 0 && (
+                  <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">
+                    <Loader2 className="w-8 h-8 animate-spin opacity-20" />
+                    <span className="italic font-medium">Aguardando logs do servidor...</span>
+                  </div>
+                )}
+                {syncLogs.map((log, i) => (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    key={i} 
+                    className={cn(
+                      "flex gap-4 p-3.5 rounded-2xl border transition-all shadow-sm",
+                      log.type === 'error' ? "bg-red-50/50 border-red-100 text-red-600" :
+                      log.type === 'success' ? "bg-emerald-50/50 border-emerald-100 text-emerald-600" :
+                      "bg-white border-slate-100 text-slate-600"
+                    )}
+                  >
+                    <div className={cn(
+                      "w-1.5 h-1.5 rounded-full mt-1.5 shrink-0",
+                      log.type === 'error' ? "bg-red-400" :
+                      log.type === 'success' ? "bg-emerald-400" : "bg-indigo-400"
+                    )} />
+                    <div className="flex-1">
+                      <span className="font-black text-[9px] uppercase tracking-wider block mb-0.5 opacity-50">
+                        {log.type}
+                      </span>
+                      <span className="font-bold leading-relaxed break-all">{log.msg}</span>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+
+              <div className="p-8 bg-white border-t border-slate-100 flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  {isCloudSyncing ? (
+                    <>
+                      <div className="flex gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.3s]" />
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce [animation-delay:-0.15s]" />
+                        <div className="w-2 h-2 rounded-full bg-indigo-500 animate-bounce" />
+                      </div>
+                      <span className="text-xs font-black text-indigo-600 uppercase tracking-widest">Processando Drive...</span>
+                    </>
+                  ) : (
+                    <div className="flex items-center gap-2 text-emerald-600 bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                      <Check className="w-3.5 h-3.5" />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Concluído</span>
+                    </div>
+                  )}
+                </div>
+                {!isCloudSyncing && (
+                  <button 
+                    onClick={() => setShowSyncModal(false)}
+                    className="px-10 py-4 bg-slate-900 text-white rounded-2xl font-black shadow-xl shadow-slate-900/20 hover:scale-105 active:scale-95 transition-all text-xs tracking-widest uppercase"
+                  >
+                    Fechar Relatório
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

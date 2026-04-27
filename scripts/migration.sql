@@ -1,4 +1,4 @@
--- SCRIPT DE MIGRAÇÃO - PORTAL SUPER
+-- SCRIPT DE MIGRAÇÃO - PORTAL
 -- Execute estas instruções no SQL Editor do seu Dashboard do Supabase
 
 -- 1. Adiciona a coluna de categoria na tabela de documentos

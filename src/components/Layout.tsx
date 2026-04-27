@@ -3,6 +3,7 @@ import { Outlet } from 'react-router-dom';
 import { cn } from '@/src/lib/utils';
 import Sidebar from './Sidebar';
 import TopBar from './TopBar';
+import MobileNav from './MobileNav';
 import AboutModal from './AboutModal';
 import { Info, MessageSquare } from 'lucide-react';
 import { motion } from 'motion/react';
@@ -20,44 +21,50 @@ export default function Layout() {
         onClose={() => setIsSidebarOpen(false)} 
       />
       <div className={cn(
-        "flex-1 flex flex-col min-h-screen w-full transition-all duration-300",
+        "flex-1 flex flex-col min-h-screen w-full transition-all duration-300 pt-16 lg:pt-0",
         isSidebarCollapsed ? "lg:ml-[88px]" : "lg:ml-72"
       )}>
         <TopBar 
           onMenuClick={() => setIsSidebarOpen(true)} 
           onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
         />
-        <main className="flex-1 flex flex-col">
-          <Outlet />
-        </main>
-        <footer className="py-6 px-12 mt-auto border-t-[3px] border-slate-100 bg-surface shadow-[0_-1px_10px_rgba(0,0,0,0.02)] relative">
-          <div className="flex flex-col md:flex-row items-center justify-center gap-6 min-h-[48px]">
-            <button 
-              onClick={() => setIsAboutOpen(true)}
-              className="flex items-center gap-2 text-[10px] text-primary uppercase tracking-[0.2em] font-black hover:opacity-70 transition-all group"
-            >
-              © {new Date().getFullYear()} Holerium  •  Adrian Saymon
-              <Info className="w-3.5 h-3.5 group-hover:rotate-12 transition-transform" />
-            </button>
-
-            <motion.a
-              href="https://wa.me/5533999461526"
-              target="_blank"
-              rel="noopener noreferrer"
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              className="md:absolute md:right-12 flex items-center gap-3 bg-[#25D366] text-white px-4 py-2 rounded-full shadow-lg shadow-emerald-500/10 hover:shadow-emerald-500/20 transition-all no-underline group"
-            >
-              <div className="flex flex-col items-start leading-none">
-                <span className="text-[8px] uppercase font-bold opacity-90 tracking-widest">Suporte</span>
-                <span className="font-black text-xs">WhatsApp</span>
-              </div>
-              <div className="w-7 h-7 bg-white/20 rounded-full flex items-center justify-center pointer-events-none group-hover:rotate-12 transition-transform">
-                <MessageSquare className="w-3.5 h-3.5 fill-white" />
-              </div>
-            </motion.a>
+        <main className="flex-1 flex flex-col pb-[110px] lg:pb-0">
+          <div className="flex-1">
+            <Outlet />
           </div>
-        </footer>
+          
+          <footer className="py-0.5 px-4 sm:px-12 mt-auto border-t border-slate-50 bg-surface relative">
+            <div className="flex flex-col items-center justify-center py-1 w-full relative">
+              <div className="flex justify-end w-full px-2">
+                <motion.a
+                  href="https://wa.me/5533999461526"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  className="flex items-center gap-2 bg-[#25D366] text-white px-3.5 py-1.5 rounded-full shadow-lg transition-all no-underline group scale-95 origin-right"
+                >
+                  <div className="flex flex-col items-start leading-none gap-0">
+                    <span className="text-[6.5px] uppercase font-bold opacity-90">Suporte</span>
+                    <span className="font-black text-[10px]">WhatsApp</span>
+                  </div>
+                  <div className="w-4.5 h-4.5 bg-white/20 rounded-full flex items-center justify-center group-hover:rotate-12 transition-transform">
+                    <MessageSquare className="w-3 h-3 fill-white" />
+                  </div>
+                </motion.a>
+              </div>
+
+              <button 
+                onClick={() => setIsAboutOpen(true)}
+                className="mt-1 flex items-center gap-1.5 text-[8px] text-primary/60 uppercase tracking-[0.2em] font-black hover:opacity-70 transition-all group"
+              >
+                © {new Date().getFullYear()} Holerium  •  Todos os direitos reservados.
+                <Info className="w-2.5 h-2.5 group-hover:rotate-12 transition-transform" />
+              </button>
+            </div>
+          </footer>
+        </main>
+        <MobileNav />
         <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
       </div>
     </div>

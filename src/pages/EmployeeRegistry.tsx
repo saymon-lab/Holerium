@@ -63,8 +63,9 @@ export default function EmployeeRegistry() {
   const [syncReferenceYear, setSyncReferenceYear] = useState(new Date().getFullYear().toString());
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<any>(null);
-  const [editForm, setEditForm] = useState({ name: '', cpf: '' });
+  const [editForm, setEditForm] = useState({ name: '', cpf: '', role: 'Colaborador' });
   const [visiblePasswords, setVisiblePasswords] = useState<Record<number, boolean>>({});
+  const [isAdding, setIsAdding] = useState(false);
   
   const [currentUser] = useState(() => {
     try {
@@ -74,6 +75,15 @@ export default function EmployeeRegistry() {
 
   const userIsMaster = ['Desenvolvedor Geral', 'superadmin'].includes(currentUser?.role);
 
+
+  const formatCPF = (value: string) => {
+    const digits = value.replace(/\D/g, '');
+    const limited = digits.slice(0, 11);
+    return limited
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+  };
 
   useEffect(() => {
     fetchEmployees();
@@ -157,45 +167,78 @@ export default function EmployeeRegistry() {
 
   const handleEditEmployee = (emp: any) => {
     setEditingEmployee(emp);
-    setEditForm({ name: emp.name, cpf: emp.cpf });
+    setIsAdding(false);
+    setEditForm({ name: emp.name, cpf: emp.cpf, role: emp.role || 'Colaborador' });
+    setIsEditModalOpen(true);
+  };
+
+  const handleAddEmployee = () => {
+    setEditingEmployee(null);
+    setIsAdding(true);
+    setEditForm({ name: '', cpf: '', role: 'Colaborador' });
     setIsEditModalOpen(true);
   };
 
   const saveEmployeeEdit = async () => {
-    if (!editingEmployee) return;
+    if (!isAdding && !editingEmployee) return;
     
-    const nameChanged = editForm.name !== editingEmployee.name;
-    const cpfChanged = editForm.cpf !== editingEmployee.cpf;
-
-    if (!nameChanged && !cpfChanged) {
-      setIsEditModalOpen(false);
+    if (!editForm.name.trim() || !editForm.cpf.trim()) {
+      alert('Por favor, preencha nome e CPF.');
       return;
     }
 
     try {
-      if (cpfChanged) {
-        // 1. Atualizar documentos vinculados ao CPF antigo para não perder histórico
-        const { error: docError } = await supabase
-          .from('documents')
-          .update({ owner_cpf: editForm.cpf })
-          .eq('owner_cpf', editingEmployee.cpf);
-        
-        if (docError) throw new Error('Erro ao atualizar documentos: ' + docError.message);
+      if (isAdding) {
+        // Fluxo de Cadastro Novo
+        const { error: insertError } = await supabase
+          .from('employees')
+          .insert([{
+            name: editForm.name,
+            cpf: editForm.cpf,
+            role: editForm.role || 'Colaborador',
+            status: 'Ativo',
+            avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(editForm.name)}`
+          }]);
+
+        if (insertError) throw insertError;
+        alert('Funcionário cadastrado com sucesso!');
+      } else {
+        // Fluxo de Edição Existente
+        const roleChanged = editForm.role !== editingEmployee.role;
+        const nameChanged = editForm.name !== editingEmployee.name;
+        const cpfChanged = editForm.cpf !== editingEmployee.cpf;
+
+        if (!nameChanged && !cpfChanged && !roleChanged) {
+          setIsEditModalOpen(false);
+          return;
+        }
+
+        if (cpfChanged) {
+          const { error: docError } = await supabase
+            .from('documents')
+            .update({ owner_cpf: editForm.cpf })
+            .eq('owner_cpf', editingEmployee.cpf);
+          
+          if (docError) throw new Error('Erro ao atualizar documentos: ' + docError.message);
+        }
+
+        const { error: empError } = await supabase
+          .from('employees')
+          .update({ 
+            name: editForm.name, 
+            cpf: editForm.cpf,
+            role: editForm.role
+          })
+          .eq('id', editingEmployee.id);
+
+        if (empError) throw empError;
+        alert('Cadastro atualizado com sucesso!');
       }
 
-      // 2. Atualizar o funcionário
-      const { error: empError } = await supabase
-        .from('employees')
-        .update({ name: editForm.name, cpf: editForm.cpf })
-        .eq('id', editingEmployee.id);
-
-      if (empError) throw empError;
-
-      setEmployeesList(prev => prev.map(e => e.id === editingEmployee.id ? { ...e, name: editForm.name, cpf: editForm.cpf } : e));
+      fetchEmployees();
       setIsEditModalOpen(false);
-      alert('Cadastro atualizado com sucesso!');
     } catch (err: any) {
-      alert('Erro na atualização: ' + err.message);
+      alert('Erro na operação: ' + err.message);
     }
   };
 
@@ -496,7 +539,7 @@ export default function EmployeeRegistry() {
       alert('Sincronização concluída!');
 
       // GERAR ARQUIVO DE LOG PARA O USUÁRIO
-      const logHeader = `RELATÓRIO DE SINCRONIZAÇÃO - PORTAL SUPER\nData: ${new Date().toLocaleString()}\nTotal Processado: ${filesToUpload.length}\n------------------------------------------\n\n`;
+      const logHeader = `RELATÓRIO DE SINCRONIZAÇÃO - PORTAL\nData: ${new Date().toLocaleString()}\nTotal Processado: ${filesToUpload.length}\n------------------------------------------\n\n`;
       const logBody = fullHistory.map(l => `[${l.type.toUpperCase()}] ${l.msg}`).join('\n');
       const blob = new Blob([logHeader + logBody], { type: 'text/plain' });
       const url = URL.createObjectURL(blob);
@@ -509,30 +552,29 @@ export default function EmployeeRegistry() {
       URL.revokeObjectURL(url);
 
     } catch (err: any) {
-      if (err.name !== 'AbortError') alert(`Erro: ${err.message}`);
     } finally {
       setIsSyncing(false);
     }
   };
 
   return (
-    <div className="p-4 md:p-10 flex-1 flex flex-col gap-6 md:gap-8 animate-fade-in">
-      <div className="flex items-center gap-5 mb-2">
+    <div className="p-4 sm:p-6 lg:p-10 flex-1 flex flex-col gap-4 sm:gap-8 animate-fade-in overflow-x-hidden bg-surface">
+      <div className="flex items-center gap-3 sm:gap-5 mb-2">
         <button 
           onClick={() => navigate('/dashboard')}
-          className="w-12 h-12 flex items-center justify-center rounded-full bg-white hover:bg-slate-50 transition-colors text-primary shadow-sm border border-slate-100 active:scale-95"
+          className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-white hover:bg-slate-50 transition-colors text-primary shadow-sm border border-slate-100 tap-press shrink-0"
           title="Voltar ao Início"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <section className="space-y-1">
-          <h2 className="text-2xl md:text-5xl font-extrabold font-headline text-on-surface tracking-tight">Gerenciamento de Funcionários</h2>
+        <section className="space-y-0.5">
+          <h2 className="text-xl sm:text-4xl lg:text-5xl font-extrabold font-headline text-on-surface tracking-tight leading-tight">Gestão de Equipe</h2>
         </section>
       </div>
 
-      <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
+      <section className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 sm:gap-8">
         <div className="space-y-2">
-          <p className="text-secondary font-body max-w-2xl text-sm md:text-base">Gerencie o acesso seguro a documentos e perfis de identidade para o ecossistema corporativo.</p>
+          <p className="text-secondary font-body max-w-2xl text-xs sm:text-base leading-relaxed">Gerencie o acesso seguro a documentos e perfis de identidade para o ecossistema corporativo.</p>
         </div>
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto">
           <input 
@@ -544,14 +586,17 @@ export default function EmployeeRegistry() {
           />
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="flex items-center justify-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface px-6 py-3 rounded-full font-bold active:scale-95 transition-all shadow-sm w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 bg-white text-slate-700 border border-slate-200 px-6 py-3 rounded-full font-bold tap-press transition-all shadow-sm w-full sm:w-auto hover:bg-slate-50"
           >
             <Upload className="w-5 h-5" />
-            <span>Importar CSV</span>
+            <span className="text-sm">Importar CSV</span>
           </button>
-          <button className="flex items-center justify-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-bold hover:scale-105 active:scale-95 transition-transform shadow-lg shadow-primary/20 w-full sm:w-auto">
+          <button 
+            onClick={handleAddEmployee}
+            className="flex items-center justify-center gap-2 bg-primary text-white px-6 py-3 rounded-full font-bold hover:scale-105 tap-press transition-all shadow-lg shadow-primary/20 w-full sm:w-auto"
+          >
             <Plus className="w-5 h-5" />
-            <span>Novo Funcionário</span>
+            <span className="text-sm">Novo Funcionário</span>
           </button>
         </div>
       </section>
@@ -575,15 +620,15 @@ export default function EmployeeRegistry() {
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="hidden md:block overflow-x-auto">
           <table className="w-full text-left">
             <thead>
-              <tr className="bg-surface-container-low/50">
-                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Perfil</th>
-                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Identificação (CPF)</th>
-                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Status</th>
-                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Senha</th>
-                <th className="px-4 md:px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-right">Ações</th>
+              <tr className="bg-surface-container-low/50 border-b border-surface-container-high">
+                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Perfil</th>
+                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label">Identificação (CPF)</th>
+                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Status</th>
+                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-center">Senha</th>
+                <th className="px-8 py-5 text-[11px] font-extrabold uppercase tracking-widest text-secondary font-label text-right">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-container-high">
@@ -703,6 +748,61 @@ export default function EmployeeRegistry() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile Cards List */}
+        <div className="md:hidden divide-y divide-surface-container-high overflow-y-auto max-h-[60vh]">
+           {employeesList.filter(emp => 
+                emp.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                emp.cpf.includes(searchTerm)
+            ).map((emp) => (
+              <div key={emp.id} className="p-5 space-y-4">
+                 <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden shrink-0 border border-slate-200">
+                          <img src={emp.avatar} alt={emp.name} className="w-full h-full object-cover" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="font-bold text-slate-800 truncate">{emp.name}</p>
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">{emp.role}</p>
+                        </div>
+                    </div>
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                      emp.status === 'Ativo' ? "bg-emerald-50 text-emerald-600 border border-emerald-100" : "bg-slate-50 text-slate-400 border border-slate-200"
+                    )}>
+                      {emp.status}
+                    </span>
+                 </div>
+
+                 <div className="flex flex-col gap-1.5 bg-slate-50/50 p-3 rounded-2xl border border-slate-100">
+                    <div className="flex justify-between items-center text-[10px] font-bold">
+                        <span className="text-slate-400 uppercase tracking-widest">Identificação</span>
+                        <span className="text-slate-600 font-mono">{emp.cpf}</span>
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-bold">
+                        <span className="text-slate-400 uppercase tracking-widest">Senha</span>
+                        <div className="flex items-center gap-2">
+                             <span className={cn("font-mono", emp.password ? "text-primary" : "text-slate-300 italic")}>
+                                {emp.password ? (visiblePasswords[emp.id] ? emp.password : '••••') : 'N/A'}
+                             </span>
+                             {emp.password && (
+                                <button onClick={() => setVisiblePasswords(prev => ({ ...prev, [emp.id]: !prev[emp.id] }))}>
+                                    {visiblePasswords[emp.id] ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                                </button>
+                             )}
+                        </div>
+                    </div>
+                 </div>
+
+                 <div className="flex items-center justify-end gap-2 pt-2">
+                    <button onClick={() => handleEditEmployee(emp)} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-500 tap-press shrink-0"><Edit2 className="w-4 h-4" /></button>
+                    <button onClick={() => handleResetPassword(emp)} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-500 tap-press shrink-0"><Lock className="w-4 h-4" /></button>
+                    <button onClick={() => toggleStatus(emp.id, emp.status)} className="p-3 bg-white border border-slate-200 rounded-xl text-slate-500 tap-press shrink-0"><UserMinus className="w-4 h-4" /></button>
+                    <button onClick={() => handleDeleteClick(emp.id)} className="p-3 bg-red-50 border border-red-100 rounded-xl text-red-500 tap-press shrink-0"><Trash2 className="w-4 h-4" /></button>
+                 </div>
+              </div>
+            ))}
         </div>
       </div>
 
@@ -829,7 +929,9 @@ export default function EmployeeRegistry() {
             >
               <div className="p-8 space-y-6">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-xl font-headline font-bold text-on-surface">Editar Cadastro</h3>
+                  <h3 className="text-xl font-headline font-bold text-on-surface">
+                    {isAdding ? 'Novo Funcionário' : 'Editar Cadastro'}
+                  </h3>
                   <button onClick={() => setIsEditModalOpen(false)} className="p-2 hover:bg-slate-100 rounded-xl transition-colors">
                     <X className="w-5 h-5 text-slate-400" />
                   </button>
@@ -850,9 +952,28 @@ export default function EmployeeRegistry() {
                     <input 
                       type="text" 
                       value={editForm.cpf}
-                      onChange={e => setEditForm(prev => ({ ...prev, cpf: e.target.value }))}
+                      onChange={e => setEditForm(prev => ({ ...prev, cpf: formatCPF(e.target.value) }))}
+                      maxLength={14}
                       className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none"
                     />
+                  </div>
+
+                  <div className="space-y-4">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Nível de Acesso (Cargo)</label>
+                    <select
+                      value={editForm.role}
+                      onChange={e => setEditForm(prev => ({ ...prev, role: e.target.value }))}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm focus:ring-2 focus:ring-primary/20 outline-none appearance-none cursor-pointer"
+                    >
+                      <option value="Colaborador">Colaborador (Padrão)</option>
+                      <option value="Administrador">Administrador (Total)</option>
+                      {userIsMaster && (
+                        <>
+                          <option value="superadmin">Super Admin</option>
+                          <option value="Desenvolvedor Geral">Desenvolvedor Geral</option>
+                        </>
+                      )}
+                    </select>
                   </div>
                 </div>
 
@@ -867,7 +988,7 @@ export default function EmployeeRegistry() {
                     onClick={saveEmployeeEdit}
                     className="flex-1 py-3 bg-primary text-white rounded-xl font-bold text-xs shadow-lg shadow-primary/20 hover:scale-[1.02] active:scale-95 transition-all"
                   >
-                    Salvar Alterações
+                    {isAdding ? 'Cadastrar Funcionário' : 'Salvar Alterações'}
                   </button>
                 </div>
               </div>

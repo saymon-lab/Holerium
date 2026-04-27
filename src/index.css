@@ -56,6 +56,25 @@
   h6 {
     @apply font-headline;
   }
+
+  /* Mobile Optimizations */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+.tap-press {
+  @apply active:scale-95 transition-transform duration-150;
+}
+
+.mobile-bottom-nav-blur {
+  background: rgba(255, 255, 255, 0.8);
+  backdrop-filter: blur(20px) saturate(180%);
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 }
 
 .glass-panel {

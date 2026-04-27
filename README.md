@@ -74,5 +74,5 @@ O Holerium foi desenvolvido seguindo as melhores práticas da **LGPD (Lei Geral 
 
 <div align="center">
   <p>Desenvolvido com foco em Eficiência Operacional e Experiência do Usuário.</p>
-  <b>Portal Super © 2026</b>
+  <b>Portal © 2026</b>
 </div>

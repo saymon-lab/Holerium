@@ -1,0 +1,978 @@
+[
+  {
+    "id": "53f518b8-3c7a-439d-827b-a3aaf613440d",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T19:27:24.094975+00:00"
+  },
+  {
+    "id": "dbc93afb-f056-464f-9703-6f555cf959ac",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-15T19:38:23.547995+00:00"
+  },
+  {
+    "id": "a8fc7cec-89b2-4cdd-9f70-57f6c17d0d38",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-15T19:39:09.626636+00:00"
+  },
+  {
+    "id": "c1ee4b0d-3b9e-4c77-966a-a631c68e4db4",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-15T19:40:29.113148+00:00"
+  },
+  {
+    "id": "f4b0c670-1b0b-4069-a68e-1da6840eebef",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T19:41:54.96448+00:00"
+  },
+  {
+    "id": "dade30f7-78df-449e-b393-6930d9fe2427",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T19:59:50.527285+00:00"
+  },
+  {
+    "id": "af283d00-a7b4-4822-aa50-a1e077a2338f",
+    "user": "RENATO MARTINS DOS SANTOS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T20:01:45.627065+00:00"
+  },
+  {
+    "id": "c19fdcd3-0876-4524-849c-74b17d50477a",
+    "user": "RENATO MARTINS DOS SANTOS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T20:05:15.290217+00:00"
+  },
+  {
+    "id": "d8aa7e64-2de5-411f-88c2-7157696199fe",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T20:08:16.695447+00:00"
+  },
+  {
+    "id": "6035e814-8c64-4171-97ff-0de4dd9ca612",
+    "user": "Desconhecido",
+    "role": "Intrusos",
+    "status": "erro",
+    "detail": "Tentativa de acesso Root falhou",
+    "created_at": "2026-04-15T20:46:31.002454+00:00"
+  },
+  {
+    "id": "6dd9011b-07c3-4e43-b54c-692a2531b912",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-15T20:46:41.32388+00:00"
+  },
+  {
+    "id": "104a6c0d-e989-4d7e-890d-06a102c5d98a",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T20:48:23.53671+00:00"
+  },
+  {
+    "id": "34eabeaa-1fdf-426f-9cf7-99da9da3b971",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T20:51:22.583231+00:00"
+  },
+  {
+    "id": "d973c012-0db2-4e47-9a0a-f0222f875c53",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-15T21:08:12.243915+00:00"
+  },
+  {
+    "id": "e835f2b4-5621-4faa-83d1-3f79bc95b513",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T21:18:57.660186+00:00"
+  },
+  {
+    "id": "a4e5eb67-c60d-4bc4-8663-ee7a628d9ddd",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-15T21:23:34.394557+00:00"
+  },
+  {
+    "id": "e24059cf-6515-4f4e-bd98-c7a066a59d3f",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T21:33:47.275696+00:00"
+  },
+  {
+    "id": "f57eb93e-cada-4050-a2d7-1a694f47b4dd",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T21:37:50.607678+00:00"
+  },
+  {
+    "id": "8b8d2a51-d8b5-4f7f-8bbf-81eff69d9e86",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-15T21:38:48.128749+00:00"
+  },
+  {
+    "id": "d8a82442-c345-44ab-bba1-136b363371c8",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-15T21:50:49.750017+00:00"
+  },
+  {
+    "id": "b9b09c1e-aded-4cda-826c-b30017206147",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-15T21:51:35.009135+00:00"
+  },
+  {
+    "id": "b59c26cd-9025-4572-aa0b-08b8ca4fc227",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T10:43:31.79644+00:00"
+  },
+  {
+    "id": "3532f291-d719-4794-b25d-b49c5beb2e39",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T10:44:27.094339+00:00"
+  },
+  {
+    "id": "75180bb1-1743-4a0b-ac7a-0c88ab96162e",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T10:49:55.370706+00:00"
+  },
+  {
+    "id": "d52797cd-8037-4313-987f-263ba9d5af69",
+    "user": "CPF: 085.889.866-90",
+    "role": "Colaborador",
+    "status": "erro",
+    "detail": "CPF inexistente na base",
+    "created_at": "2026-04-16T10:55:57.273128+00:00"
+  },
+  {
+    "id": "78ee4ffc-e512-4254-b2de-587c5052a278",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T10:56:01.019054+00:00"
+  },
+  {
+    "id": "aa117fce-4f1b-4279-85a0-3c65bc046cc3",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Janeiro/2026",
+    "created_at": "2026-04-16T10:57:56.957352+00:00"
+  },
+  {
+    "id": "e03d1378-42cf-4136-8694-2c5bca8ec87f",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T10:58:09.089463+00:00"
+  },
+  {
+    "id": "00f3da65-6a81-434e-95fe-38ee0b4a50ba",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T10:59:48.068771+00:00"
+  },
+  {
+    "id": "6e4383ae-8932-4f75-b00f-a799d93290ca",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Janeiro/2026",
+    "created_at": "2026-04-16T10:59:54.677098+00:00"
+  },
+  {
+    "id": "c11f7957-2f71-4093-9ae9-ba8726471756",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Fevereiro/2026",
+    "created_at": "2026-04-16T10:59:57.827322+00:00"
+  },
+  {
+    "id": "47bd904e-7e59-4dcd-953f-111e9df8fc79",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Janeiro/2025",
+    "created_at": "2026-04-16T11:00:05.214669+00:00"
+  },
+  {
+    "id": "ca657a6d-1d19-42e4-ab47-a49da5867898",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T11:01:40.522357+00:00"
+  },
+  {
+    "id": "a1d9f080-9470-4661-b26d-23af2135c860",
+    "user": "HELIO DE OLIVEIRA SANTANA",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T11:03:19.038682+00:00"
+  },
+  {
+    "id": "d78c46c8-7bed-41a1-9326-90097bcd3bf8",
+    "user": "HELIO DE OLIVEIRA SANTANA",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "Visualizou: Maio/2025",
+    "created_at": "2026-04-16T11:03:31.064794+00:00"
+  },
+  {
+    "id": "8fd36e03-c519-4c00-aaa2-1acd5ce8fe0e",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Gestão",
+    "status": "sucesso",
+    "detail": "Acesso Administrativo via CPF",
+    "created_at": "2026-04-16T11:03:42.029146+00:00"
+  },
+  {
+    "id": "5d3da977-cdbd-4533-83c1-682475a42db4",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T11:04:09.418271+00:00"
+  },
+  {
+    "id": "86945132-bf77-4b26-8cfe-3074a53f5cc1",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Janeiro/2025",
+    "created_at": "2026-04-16T11:04:15.640369+00:00"
+  },
+  {
+    "id": "351eff71-bf56-4024-8c0e-27fa9746a9e2",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T11:12:03.981852+00:00"
+  },
+  {
+    "id": "1174c7c9-75cb-4581-ad00-73505523317c",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T11:13:07.604454+00:00"
+  },
+  {
+    "id": "f1be0ae8-1f35-425b-a863-b5fbf7442aaf",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Comprovante de Rendimentos/2026",
+    "created_at": "2026-04-16T11:13:16.828432+00:00"
+  },
+  {
+    "id": "e2eac735-b100-48cc-84d9-9dfa633ba88a",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Janeiro/2025",
+    "created_at": "2026-04-16T11:13:32.011194+00:00"
+  },
+  {
+    "id": "3b1a0c9a-8dfd-48db-bfde-c4704d066b55",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Comprovante de Rendimentos/2026",
+    "created_at": "2026-04-16T11:14:30.224977+00:00"
+  },
+  {
+    "id": "13d40241-f42f-43b1-9e35-2efdccd588a5",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T11:19:29.659152+00:00"
+  },
+  {
+    "id": "57a6bb5b-3937-41a9-898b-cad5f5ab7b99",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T11:21:42.18502+00:00"
+  },
+  {
+    "id": "02401b52-9e2c-45a6-86ba-6106e15b4129",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Janeiro/2026",
+    "created_at": "2026-04-16T11:21:51.770004+00:00"
+  },
+  {
+    "id": "bac7b382-0e94-4d9a-85f0-62d89e5f4c89",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T11:24:02.069988+00:00"
+  },
+  {
+    "id": "4b034ba1-1644-4c01-ad8d-a02fc123eaba",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T11:26:00.978815+00:00"
+  },
+  {
+    "id": "42edbf8d-8cec-4d92-a761-97c7679ce9cb",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T11:27:19.075791+00:00"
+  },
+  {
+    "id": "fcd4fc74-20fd-4388-b938-f20163c873eb",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T11:30:54.581618+00:00"
+  },
+  {
+    "id": "aee6e6bc-5599-41e4-b603-25682d91a446",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T11:59:18.508735+00:00"
+  },
+  {
+    "id": "8285a768-e204-401e-a0de-200c96f65c3a",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T12:03:15.864219+00:00"
+  },
+  {
+    "id": "71db286a-5f63-49ef-bab2-e707e785ec7f",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T12:20:49.896206+00:00"
+  },
+  {
+    "id": "c617a633-6692-4120-a7ab-4fba0eaffe9c",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Abril/2025",
+    "created_at": "2026-04-16T12:52:33.505607+00:00"
+  },
+  {
+    "id": "d279bbed-d959-450d-85ab-050aa7a5a77e",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T12:55:58.408955+00:00"
+  },
+  {
+    "id": "3d1f7ee7-f2a7-4455-9259-9dec6b3abcf7",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T12:56:30.452226+00:00"
+  },
+  {
+    "id": "8e216fb6-6c34-49b8-8222-2527f205d074",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T13:58:48.481329+00:00"
+  },
+  {
+    "id": "ef2d95eb-7a87-4f2f-8579-197eae8017cd",
+    "user": "CPF: 085.888.968-69",
+    "role": "Colaborador",
+    "status": "erro",
+    "detail": "CPF inexistente na base",
+    "created_at": "2026-04-16T14:12:57.008839+00:00"
+  },
+  {
+    "id": "4cafd79f-e0aa-4f47-9b7d-565c315213d9",
+    "user": "CPF: 085.886.986-90",
+    "role": "Colaborador",
+    "status": "erro",
+    "detail": "CPF inexistente na base",
+    "created_at": "2026-04-15T19:23:23.571933+00:00"
+  },
+  {
+    "id": "85d4e17d-fd15-4bc6-8cbc-d0265bba7892",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-15T19:23:28.158503+00:00"
+  },
+  {
+    "id": "584fcf99-bedd-4f2f-8e02-9e6e64375096",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T14:13:01.509845+00:00"
+  },
+  {
+    "id": "4d27af31-84a4-453e-8de8-5a9ee27379a3",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T14:13:48.577253+00:00"
+  },
+  {
+    "id": "695cdb08-0ffb-4851-a0c0-eef12665e0b8",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Abril/2025",
+    "created_at": "2026-04-16T14:20:18.526539+00:00"
+  },
+  {
+    "id": "fabef989-9b59-4ff0-bb61-a0685369bf24",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T14:22:18.79608+00:00"
+  },
+  {
+    "id": "a5119a70-20c6-44f3-8c38-63badac2b40a",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T14:26:01.93483+00:00"
+  },
+  {
+    "id": "0ab67891-9850-444e-a95a-022d3cfa78e2",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T14:27:00.259053+00:00"
+  },
+  {
+    "id": "b3ec4eea-b837-4da3-b287-f0d28b36142e",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Abril/2026",
+    "created_at": "2026-04-16T14:32:32.445451+00:00"
+  },
+  {
+    "id": "24ddc3a4-d55a-4883-a198-5e6464f82044",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Maio/2026",
+    "created_at": "2026-04-16T14:40:38.460447+00:00"
+  },
+  {
+    "id": "b5427e8c-74ab-481e-837f-308e186e17cb",
+    "user": "HELIO OLIVEIRA SANTANA",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T14:44:33.101868+00:00"
+  },
+  {
+    "id": "a0166f77-4829-4249-b34f-2bd983a446d8",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T14:45:25.209427+00:00"
+  },
+  {
+    "id": "efec5aa7-6384-415a-8d56-4a176c04e33a",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T14:52:14.907197+00:00"
+  },
+  {
+    "id": "58336d1c-282d-4b86-9962-a5a9893303bb",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Comprovante de Rendimentos/2026",
+    "created_at": "2026-04-16T14:52:18.905456+00:00"
+  },
+  {
+    "id": "a68a88ab-aeea-4662-a0c4-1bab91967959",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T14:57:54.227038+00:00"
+  },
+  {
+    "id": "930b5126-1f31-4789-9e0b-32e735c2d586",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "admin",
+    "status": "sucesso",
+    "detail": "Visualizou: Comprovante de Rendimentos/2026",
+    "created_at": "2026-04-16T15:01:58.348551+00:00"
+  },
+  {
+    "id": "4f36f86d-8185-417a-806e-d907b15a79bf",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T16:59:58.084436+00:00"
+  },
+  {
+    "id": "175b33b4-b6a2-4860-a857-8d0a4b1b3293",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T17:47:30.637349+00:00"
+  },
+  {
+    "id": "21383f68-cf46-42c7-b186-bbb40eda15eb",
+    "user": "UATILO CARDOSO BRITO",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T17:48:19.417051+00:00"
+  },
+  {
+    "id": "84ada6d7-5b29-4b12-a2a1-9814a6f1c1b4",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T17:53:17.628236+00:00"
+  },
+  {
+    "id": "5e2f23bf-9d9e-41c5-a3f9-c840b2e93461",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T18:05:46.633635+00:00"
+  },
+  {
+    "id": "a771fdcc-bd09-4f5d-931b-cb00a6bd5626",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T18:13:29.598669+00:00"
+  },
+  {
+    "id": "1e4b7469-bafa-4e68-a0ae-92952549422a",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T18:13:42.214977+00:00"
+  },
+  {
+    "id": "8b05ae29-9b28-47db-a188-13032a2729c4",
+    "user": "FELLIPE SCARAMUSSA PESCA",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T18:17:57.647197+00:00"
+  },
+  {
+    "id": "b4ee8626-3d17-4b89-920f-7ea155c085a4",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T18:19:26.21617+00:00"
+  },
+  {
+    "id": "acf2e624-b7e1-4be5-a129-e6944f2028c0",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T18:21:02.095958+00:00"
+  },
+  {
+    "id": "5a2a9035-ec82-4f79-a415-db8a3cc8db20",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T18:27:48.034279+00:00"
+  },
+  {
+    "id": "0d374103-33c7-4b3c-a7f5-0cd9661c8fd0",
+    "user": "FELLIPE SCARAMUSSA PESCA",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T18:56:48.025958+00:00"
+  },
+  {
+    "id": "9599f4e1-25a3-4009-ab0c-2ce88f925052",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T19:05:30.809673+00:00"
+  },
+  {
+    "id": "0627854b-86d8-410c-acb3-5f8cd871cb48",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T19:06:45.917046+00:00"
+  },
+  {
+    "id": "7ec5af1f-edf4-4968-a34b-083e7ad17cd6",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T19:14:52.588034+00:00"
+  },
+  {
+    "id": "03300cb5-fb90-4fed-94b7-c12c29d9ad22",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T19:18:59.449827+00:00"
+  },
+  {
+    "id": "1bd733cb-676a-45a8-9f1b-a6950f597af2",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T19:25:45.237626+00:00"
+  },
+  {
+    "id": "49175073-4982-4253-936f-4c76346b6e36",
+    "user": "FELLIPE SCARAMUSSA PESCA",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T19:28:36.747231+00:00"
+  },
+  {
+    "id": "fc105b37-a7ac-43be-b071-e5695ce785bc",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T19:30:04.061643+00:00"
+  },
+  {
+    "id": "b65e2228-3eb5-44d5-a55f-d968227fa5de",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T19:57:44.999174+00:00"
+  },
+  {
+    "id": "3a796241-a142-4541-a364-5007c545fc1c",
+    "user": "FELLIPE SCARAMUSSA PESCA",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T20:00:24.245288+00:00"
+  },
+  {
+    "id": "e9770bdb-136c-4c8f-af07-a7ed0a9da04a",
+    "user": "FELLIPE SCARAMUSSA PESCA",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T20:06:00.805668+00:00"
+  },
+  {
+    "id": "9ebec47f-6cf0-434f-baf0-f9875f1db678",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T20:10:28.846056+00:00"
+  },
+  {
+    "id": "6c95365b-7abc-4c6e-a45a-51851d43df55",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-16T20:11:32.154554+00:00"
+  },
+  {
+    "id": "f6567b06-f37b-4479-9486-1012913e90f8",
+    "user": "FELLIPE SCARAMUSSA PESCA",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T20:16:19.306089+00:00"
+  },
+  {
+    "id": "cf3a4781-68f5-4541-abf3-2b9c77362c21",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T20:19:19.506917+00:00"
+  },
+  {
+    "id": "2c5d81f8-5bde-4996-bb9b-bb9c953688f6",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T20:20:36.806808+00:00"
+  },
+  {
+    "id": "125ac480-d161-4bd3-905b-77404edd4a84",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T20:22:58.60691+00:00"
+  },
+  {
+    "id": "4398c3f4-13db-4e90-b599-4d518e2897b0",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Gestão",
+    "status": "sucesso",
+    "detail": "Acesso Administrativo via CPF",
+    "created_at": "2026-04-16T20:39:25.883421+00:00"
+  },
+  {
+    "id": "4234e129-c345-4f7d-b4d4-50f2fc11ae04",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T20:41:51.249074+00:00"
+  },
+  {
+    "id": "8c06ac4c-7176-445c-8e5d-3f0243353b9f",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T20:50:55.175479+00:00"
+  },
+  {
+    "id": "c78342b5-dfb1-4b37-a9c4-e3af0f2125ec",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T21:09:31.661002+00:00"
+  },
+  {
+    "id": "4699d35a-cdbb-4c24-9384-f36bb74228d0",
+    "user": "ROMEU CUSTODIO FERREIRA JUNIOR",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T21:15:18.74053+00:00"
+  },
+  {
+    "id": "10358063-83ef-4267-ab12-ab80043e257b",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-16T22:50:48.146104+00:00"
+  },
+  {
+    "id": "a7db8c8c-f9c0-42c9-9ddc-2628d2088804",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Gestão",
+    "status": "erro",
+    "detail": "Senha inválida",
+    "created_at": "2026-04-17T11:05:35.534368+00:00"
+  },
+  {
+    "id": "c1e90d4b-17bc-4660-be98-7579d8f4fde2",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Gestão",
+    "status": "sucesso",
+    "detail": "Acesso Administrativo via CPF",
+    "created_at": "2026-04-17T11:05:42.713024+00:00"
+  },
+  {
+    "id": "773b0c1c-b425-4e31-9563-2a43b9a1b0a6",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "erro",
+    "detail": "Senha inválida",
+    "created_at": "2026-04-17T11:51:39.705049+00:00"
+  },
+  {
+    "id": "ca720794-576d-4fbd-90b1-e17228b03f06",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-17T11:51:46.888144+00:00"
+  },
+  {
+    "id": "a9878b5e-ab75-4fa9-8281-4f81382f83a3",
+    "user": "Desconhecido",
+    "role": "Intrusos",
+    "status": "erro",
+    "detail": "Tentativa de acesso Root falhou",
+    "created_at": "2026-04-17T11:51:58.045227+00:00"
+  },
+  {
+    "id": "bf5e1f32-2583-4c3c-bd96-a85786753847",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Colaborador",
+    "status": "sucesso",
+    "detail": "",
+    "created_at": "2026-04-17T11:52:54.134294+00:00"
+  },
+  {
+    "id": "cc442255-3256-4d10-abef-0da598c7eac5",
+    "user": "Desconhecido",
+    "role": "Intrusos",
+    "status": "erro",
+    "detail": "Tentativa de acesso Root falhou",
+    "created_at": "2026-04-17T12:04:34.372703+00:00"
+  },
+  {
+    "id": "fc1a1129-01fb-4d53-b05c-015a75060207",
+    "user": "Desconhecido",
+    "role": "Intrusos",
+    "status": "erro",
+    "detail": "Tentativa de acesso Root falhou",
+    "created_at": "2026-04-17T12:04:40.853805+00:00"
+  },
+  {
+    "id": "bcbf299a-dc62-478d-9cce-a53eda17b452",
+    "user": "Desconhecido",
+    "role": "Intrusos",
+    "status": "erro",
+    "detail": "Tentativa de acesso Root falhou",
+    "created_at": "2026-04-17T12:04:53.465179+00:00"
+  },
+  {
+    "id": "3b73e2a7-fc8f-4ae4-b267-196b1a54f22a",
+    "user": "Desconhecido",
+    "role": "Intrusos",
+    "status": "erro",
+    "detail": "Tentativa de acesso Root falhou",
+    "created_at": "2026-04-17T12:05:14.362804+00:00"
+  },
+  {
+    "id": "a5665db7-bd07-4f05-821a-f4bedb75bec4",
+    "user": "Desconhecido",
+    "role": "Intrusos",
+    "status": "erro",
+    "detail": "Tentativa de acesso Root falhou",
+    "created_at": "2026-04-17T12:05:27.121965+00:00"
+  },
+  {
+    "id": "599ba71f-27a6-44d3-8f46-bc785c6fe9a9",
+    "user": "Desconhecido",
+    "role": "Intrusos",
+    "status": "erro",
+    "detail": "Tentativa de acesso Root falhou",
+    "created_at": "2026-04-17T12:05:34.662629+00:00"
+  },
+  {
+    "id": "20bd2741-85e5-41c2-8901-c9ef2540365d",
+    "user": "ADRIAN SAYMON SILVA MARTINS",
+    "role": "Gestão",
+    "status": "sucesso",
+    "detail": "Acesso Administrativo via CPF",
+    "created_at": "2026-04-17T12:12:59.767671+00:00"
+  },
+  {
+    "id": "abf11e60-8bc4-488d-9148-22cc4064b0f1",
+    "user": "Desenvolvedor",
+    "role": "Root",
+    "status": "sucesso",
+    "detail": "Acesso via Console Geral",
+    "created_at": "2026-04-17T12:13:27.489095+00:00"
+  }
+]

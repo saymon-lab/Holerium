@@ -147,74 +147,89 @@ export default function Sidebar({ isOpen, onClose, isCollapsed }: SidebarProps) 
           )}
         </div>
 
-        <nav className="flex flex-col gap-1">
+        <nav className="flex flex-col gap-1 items-start">
           {visibleNavItems.map((item) => {
-            const isActive = location.pathname === item.path || (item.label === 'Meus Rendimentos' && sessionStorage.getItem('doc_viewState') === 'rendimentos' && location.pathname === '/documents');
+            const isActive = location.pathname === item.path;
             
             return (
-              <button
+              <div
                 key={item.label}
-                onClick={() => {
-                  if (item.label === 'Holerites') {
-                    sessionStorage.setItem('doc_viewState', 'years');
-                    sessionStorage.removeItem('doc_selectedYear');
-                    navigate('/documents', { state: { reset: true } });
-                  } else if (item.label === 'Meus Rendimentos') {
-                    sessionStorage.setItem('doc_viewState', 'rendimentos_years');
-                    navigate('/documents', { state: { rendimentos: true, reset: true } });
-                  } else {
-                    navigate(item.path);
-                  }
-                  onClose();
-                }}
                 className={cn(
-                  "flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group relative overflow-hidden w-full text-left",
-                  isActive 
-                    ? "bg-white/10 text-white shadow-lg ring-1 ring-white/10" 
-                    : "text-white/60 hover:text-white hover:bg-white/5",
-                  isCollapsed && "justify-center px-0 gap-0"
+                  "w-full transition-all duration-300 group relative overflow-hidden rounded-xl",
+                  isActive ? "bg-white/10 shadow-lg ring-1 ring-white/10" : "hover:bg-white/5",
+                  isCollapsed && "flex justify-center"
                 )}
               >
-                {/* Active Indicator Bar */}
-                {isActive && (
+                {/* Active Indicator Bar - Movido para o container pai */}
+                {isActive && !isCollapsed && (
                   <motion.div 
                     layoutId="active-nav-bar"
                     className="absolute left-0 top-3 bottom-3 w-1 bg-[#E9C176] rounded-r-full"
                   />
                 )}
-                <item.icon className={cn("w-5 h-5 flex-shrink-0 transition-transform", isActive ? "text-[#E9C176]" : "text-white/40", !isActive && "group-hover:scale-110")} />
-                {!isCollapsed && (
-                  <motion.span 
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    className="text-sm font-semibold whitespace-nowrap"
-                  >
-                    {item.label}
-                  </motion.span>
-                )}
-              </button>
+                
+                <button
+                  onClick={() => {
+                    if (item.label === 'Holerites') {
+                      sessionStorage.setItem('doc_viewState', 'years');
+                      sessionStorage.removeItem('doc_selectedYear');
+                      navigate('/documents', { state: { reset: true } });
+                    } else if (item.label === 'Meus Rendimentos' || item.path === '/rendimentos') {
+                      sessionStorage.setItem('doc_viewState', 'rendimentos_years');
+                      navigate('/rendimentos', { state: { reset: true } });
+                    } else {
+                      navigate(item.path);
+                    }
+                    onClose();
+                  }}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 transition-all duration-300 text-left outline-none",
+                    isActive ? "text-white" : "text-white/60 group-hover:text-white",
+                    isCollapsed ? "justify-center px-0 gap-0 w-full h-12" : "w-fit"
+                  )}
+                >
+                  <item.icon className={cn("w-5 h-5 flex-shrink-0 transition-transform", isActive ? "text-[#E9C176]" : "text-white/40", !isActive && "group-hover:scale-110")} />
+                  {!isCollapsed && (
+                    <motion.span 
+                      initial={{ opacity: 0, x: -10 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      className="text-sm font-semibold whitespace-nowrap"
+                    >
+                      {item.label === 'Meus Rendimentos' ? 'Rendimentos' : item.label}
+                    </motion.span>
+                  )}
+                </button>
+              </div>
             );
           })}
+          
+          <div
+            className={cn(
+              "w-full transition-all duration-300 group relative overflow-hidden rounded-xl mt-2 hover:bg-red-500/10",
+              isCollapsed && "flex justify-center"
+            )}
+          >
+            <button
+              onClick={() => {
+                localStorage.removeItem('currentUser');
+                sessionStorage.removeItem('doc_viewState');
+                sessionStorage.removeItem('doc_selectedYear');
+                sessionStorage.removeItem('doc_selectedMonth');
+                onClose();
+                navigate('/login');
+              }}
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 transition-all duration-300 group text-red-500 outline-none",
+                isCollapsed ? "justify-center px-0 gap-0 w-full h-12" : "w-fit"
+              )}
+            >
+              <LogOut className="w-5 h-5 flex-shrink-0 transition-transform group-hover:-translate-x-1" />
+              {!isCollapsed && <span className="text-sm font-black tracking-tight">Sair do Portal</span>}
+            </button>
+          </div>
         </nav>
 
         <div className="mt-auto px-4 pt-8">
-          <button
-            onClick={() => {
-              localStorage.removeItem('currentUser');
-              sessionStorage.removeItem('doc_viewState');
-              sessionStorage.removeItem('doc_selectedYear');
-              sessionStorage.removeItem('doc_selectedMonth');
-              onClose();
-              navigate('/login');
-            }}
-            className={cn(
-              "flex mb-4 items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 group text-red-500 hover:bg-red-500/10 w-full",
-              isCollapsed && "justify-center px-0 gap-0"
-            )}
-          >
-            <LogOut className="w-5 h-5 flex-shrink-0 transition-transform group-hover:-translate-x-1" />
-            {!isCollapsed && <span className="text-sm font-black tracking-tight">Sair do Portal</span>}
-          </button>
 
           <div className={cn(
             "p-4 rounded-xl bg-white/5 border border-white/5 transition-all duration-300",

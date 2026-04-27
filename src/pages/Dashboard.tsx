@@ -23,7 +23,7 @@ import { supabase } from '@/src/lib/supabase';
 const categories = [
   { icon: Clock, label: 'Docs Recentes', desc: '0 novos arquivos adicionados hoje', color: 'text-blue-600', iconBg: 'bg-blue-50', path: '/documents' },
   { icon: ShieldCheck, label: 'Comprovantes', desc: 'Acesse seus recibos e comprovantes', color: 'text-emerald-600', iconBg: 'bg-emerald-50', path: '/documents' },
-  { icon: ArrowUpRight, label: 'Meus Rendimentos', desc: 'Visualize seus informes anuais', color: 'text-amber-600', iconBg: 'bg-amber-50', path: '/documents' },
+  { icon: ArrowUpRight, label: 'Meus Rendimentos', desc: 'Visualize seus informes anuais', color: 'text-amber-600', iconBg: 'bg-amber-50', path: '/rendimentos' },
 ];
 
 export default function Dashboard() {
@@ -108,14 +108,14 @@ export default function Dashboard() {
   };
 
   const handleOpenRendimentos = () => {
-    sessionStorage.setItem('doc_viewState', 'rendimentos');
-    navigate('/documents', { state: { rendimentos: true } });
+    sessionStorage.setItem('doc_viewState', 'rendimentos_years');
+    navigate('/rendimentos', { state: { reset: true } });
   };
 
   const currentYear = new Date().getFullYear().toString();
 
   return (
-    <div className="p-6 lg:p-10 flex-1 flex flex-col gap-8 animate-fade-in overflow-y-auto bg-surface">
+    <div className="p-4 sm:p-6 lg:p-10 flex-1 flex flex-col gap-4 sm:gap-8 animate-fade-in overflow-y-auto bg-surface">
       
       {/* Main Grid: Left (Hero + Categories) | Right (Recent Activity) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -127,7 +127,7 @@ export default function Dashboard() {
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white rounded-[2.5rem] p-10 border border-outline-variant/30 shadow-[0_20px_50px_rgba(0,0,0,0.04)] relative overflow-hidden group"
+            className="bg-white rounded-[2rem] sm:rounded-[2.5rem] p-6 sm:p-10 border border-outline-variant/30 shadow-[0_20px_50px_rgba(0,0,0,0.04)] relative overflow-hidden group"
           >
             <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -mr-32 -mt-32 blur-3xl opacity-50 group-hover:bg-blue-50 transition-colors duration-500" />
             
@@ -139,9 +139,9 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="space-y-4 mb-12">
-                <h2 className="text-4xl sm:text-6xl font-black text-[#0B1F5B] font-headline tracking-tighter">Ano {currentYear}</h2>
-                <p className="text-slate-500 font-medium text-base sm:text-lg max-w-lg leading-relaxed">
+              <div className="space-y-4 mb-8 sm:mb-12">
+                <h2 className="text-3xl sm:text-6xl font-black text-[#0B1F5B] font-headline tracking-tighter">Ano {currentYear}</h2>
+                <p className="text-slate-500 font-medium text-sm sm:text-lg max-w-lg leading-relaxed">
                   Documentação ativa para o exercício fiscal atual. Seguro, auditado e criptografado.
                 </p>
               </div>
@@ -164,17 +164,17 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
                 <button 
                   onClick={() => handleOpenYear(currentYear)}
-                  className="bg-primary text-on-primary px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 active:scale-95 transition-all shadow-xl shadow-black/20 group"
+                  className="bg-primary text-on-primary px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold flex items-center justify-center gap-3 hover:opacity-90 tap-press transition-all shadow-xl shadow-black/20 group"
                 >
                   <FileText className="w-5 h-5" />
                   <span>Abrir Pasta</span>
                 </button>
                 <button 
                   onClick={handleViewAll}
-                  className="bg-white text-slate-900 border border-slate-200 px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold hover:bg-slate-50 transition-all flex items-center justify-center gap-2"
+                  className="bg-white text-slate-900 border border-slate-200 px-6 sm:px-10 py-4 sm:py-5 rounded-2xl font-bold hover:bg-slate-50 tap-press transition-all flex items-center justify-center gap-2"
                 >
                   <span>Ver Todos os Anos</span>
                 </button>

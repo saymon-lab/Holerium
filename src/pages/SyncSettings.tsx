@@ -266,24 +266,24 @@ export default function SyncSettings() {
   const isColaborador = currentUser.role !== 'Administrador do Sistema';
 
   return (
-    <div className="p-10 flex-1 flex flex-col gap-8 animate-fade-in max-w-4xl mx-auto w-full">
-      <div className="flex items-center gap-5 mb-2">
+    <div className="p-4 sm:p-6 lg:p-10 flex-1 flex flex-col gap-6 sm:gap-8 animate-fade-in max-w-4xl mx-auto w-full pb-[100px] lg:pb-10">
+      <div className="flex items-center gap-3 sm:gap-5 mb-2">
         <button 
           onClick={() => navigate('/dashboard')}
-          className="w-12 h-12 flex items-center justify-center rounded-full bg-white hover:bg-slate-50 transition-colors text-primary shadow-sm border border-slate-100 active:scale-95"
+          className="w-10 h-10 sm:w-12 sm:h-12 flex items-center justify-center rounded-full bg-white hover:bg-slate-50 transition-colors text-primary shadow-sm border border-slate-100 tap-press shrink-0"
           title="Voltar ao Início"
         >
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <section className="space-y-2">
-          <h2 className="text-4xl md:text-5xl font-extrabold font-headline text-on-surface tracking-tight">
+        <section className="space-y-0.5">
+          <h2 className="text-xl sm:text-4xl lg:text-5xl font-extrabold font-headline text-on-surface tracking-tight leading-tight">
             {isColaborador ? 'Meu Perfil' : 'Perfil Administrador'}
           </h2>
         </section>
       </div>
 
-      <section className="space-y-2">
-        <p className="text-secondary font-body max-w-2xl">
+      <section className="space-y-1">
+        <p className="text-secondary font-body max-w-2xl text-xs sm:text-base leading-relaxed">
           {isColaborador 
             ? 'Gerencie sua foto de perfil oficial no Portal.' 
             : 'Atualmente focado no gerenciamento de seu próprio perfil.'}
@@ -292,7 +292,7 @@ export default function SyncSettings() {
 
       <div className="bg-surface-container-lowest rounded-3xl p-12 shadow-sm border border-surface-container-high flex flex-col items-center justify-center text-center space-y-6">
         <div className="relative group">
-          <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-surface shadow-xl bg-surface-container-highest">
+          <div className="w-28 h-28 sm:w-32 sm:h-32 rounded-full overflow-hidden border-4 border-surface shadow-xl bg-surface-container-highest shrink-0">
             <img 
               src={currentUser.avatar || 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&w=150&q=80'} 
               alt="Avatar" 
@@ -302,7 +302,7 @@ export default function SyncSettings() {
           </div>
           <button 
             onClick={() => fileInputRef.current?.click()}
-            className="absolute bottom-0 right-0 p-3 bg-primary text-white rounded-full shadow-lg hover:scale-110 active:scale-95 transition-all group-hover:ring-4 ring-primary/20"
+            className="absolute bottom-0 right-0 p-3 bg-primary text-white rounded-full shadow-lg hover:scale-110 tap-press transition-all group-hover:ring-4 ring-primary/20"
           >
             <Camera className="w-5 h-5" />
           </button>
@@ -321,15 +321,15 @@ export default function SyncSettings() {
         </div>
         
         {isColaborador && (
-          <div className="flex items-center gap-2 mt-4 px-4 py-3 bg-blue-50 text-blue-900 rounded-2xl text-xs font-bold border border-blue-100">
-            <BadgeAlert className="w-5 h-5 text-primary" />
-            <span className="text-left">Suas credenciais (Nome e CPF) são blindadas e exclusivas. Apenas o Administrador Global pode alterá-las. A sua foto, porém, é customizável.</span>
+          <div className="flex items-start gap-3 mt-4 px-4 py-3 bg-blue-50 text-blue-900 rounded-2xl text-[10px] sm:text-xs font-bold border border-blue-100 text-left">
+            <BadgeAlert className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+            <span className="leading-relaxed">Suas credenciais (Nome e CPF) são blindadas e exclusivas. Apenas o Administrador Global pode alterá-las. A sua foto, porém, é customizável.</span>
           </div>
         )}
       </div>
 
       {/* Seção de Segurança: CPF e Senha */}
-      <section className="bg-white rounded-3xl p-10 shadow-sm border border-surface-container-high space-y-8">
+      <section className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-surface-container-high space-y-6 sm:space-y-8">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
             <Lock className="w-6 h-6" />
@@ -365,9 +365,9 @@ export default function SyncSettings() {
             </div>
             <button 
               onClick={() => setShowPasswordForm(true)}
-              className="px-4 py-2 bg-white text-primary rounded-xl font-bold text-xs border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-sm"
+              className="px-4 py-2 bg-white text-primary rounded-xl font-bold text-xs border border-primary/20 hover:bg-primary hover:text-white transition-all shadow-sm tap-press"
             >
-              Alterar Senha
+              Alterar
             </button>
           </div>
         </div>
@@ -395,7 +395,7 @@ export default function SyncSettings() {
               <button 
                 onClick={handleUpdatePassword}
                 disabled={isUpdatingPassword || newPassword.length !== 4}
-                className="w-full sm:w-auto px-10 py-5 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+                className="w-full sm:w-auto px-10 py-5 bg-primary text-white rounded-2xl font-bold shadow-lg shadow-primary/20 hover:scale-105 tap-press transition-all disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 <Save className="w-5 h-5" />
                 {isUpdatingPassword ? 'Salvando...' : 'Salvar Senha'}
@@ -406,7 +406,7 @@ export default function SyncSettings() {
       </section>
 
       {/* Seção de Biometria */}
-      <section className="bg-white rounded-3xl p-10 shadow-sm border border-surface-container-high space-y-6">
+      <section className="bg-white rounded-3xl p-6 sm:p-10 shadow-sm border border-surface-container-high space-y-6">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 bg-primary/5 text-primary rounded-2xl flex items-center justify-center">
             <Fingerprint className="w-6 h-6" />
@@ -431,7 +431,7 @@ export default function SyncSettings() {
             <button 
               onClick={registerBiometrics}
               disabled={isRegisteringBio}
-              className="bg-primary text-white px-8 py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
+              className="bg-primary text-white px-8 py-4 sm:py-3 rounded-xl font-bold text-sm shadow-lg shadow-primary/20 hover:scale-105 tap-press transition-all flex items-center justify-center gap-2 w-full sm:w-auto whitespace-nowrap"
             >
               <Fingerprint className="w-4 h-4" />
               {isRegisteringBio ? 'Registrando...' : 'Ativar Digital'}
@@ -440,7 +440,7 @@ export default function SyncSettings() {
             <button 
               onClick={removeBiometrics}
               disabled={isRegisteringBio}
-              className="bg-red-50 text-red-600 px-8 py-3 rounded-xl font-bold text-sm hover:bg-red-100 active:scale-95 transition-all flex items-center gap-2 whitespace-nowrap"
+              className="bg-red-50 text-red-600 px-8 py-4 sm:py-3 rounded-xl font-bold text-sm hover:bg-red-100 tap-press transition-all flex items-center justify-center gap-2 w-full sm:w-auto whitespace-nowrap"
             >
               <Trash2 className="w-4 h-4" />
               Remover Acesso

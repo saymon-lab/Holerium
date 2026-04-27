@@ -1,43 +1,41 @@
 import React, { useState } from 'react';
-import { Shield, PersonStanding, Lock, ArrowRight, Fingerprint, ScanFace, Key, AlertCircle, MessageSquare } from 'lucide-react';
+import { Shield, PersonStanding, Lock, ArrowRight, Fingerprint, ScanFace, Key, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { cn } from '@/src/lib/utils';
 import ContactButton from '@/src/components/ContactButton';
 import { supabase } from '@/src/lib/supabase';
 import AboutModal from '@/src/components/AboutModal';
-import { Info } from 'lucide-react';
 
 export default function Login() {
   const navigate = useNavigate();
   const [cpf, setCpf] = useState('');
   const [password, setPassword] = useState('');
-  const [loginTab, setLoginTab] = useState<'colaborador'|'admin'|'super'>('colaborador');
+  const [loginTab, setLoginTab] = useState<'login'|'register'>('login');
   const [error, setError] = useState('');
   const [isAboutOpen, setIsAboutOpen] = useState(false);
   const [isBioLoading, setIsBioLoading] = useState(false);
   const [rememberMe, setRememberMe] = useState(() => {
-    return localStorage.getItem('remember_me') === 'true';
+    const saved = localStorage.getItem('remember_me');
+    return saved === null ? true : saved === 'true';
   });
-  const [isRegistering, setIsRegistering] = useState(false);
   const [registerPassword, setRegisterPassword] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
 
   React.useEffect(() => {
     const savedCpf = localStorage.getItem('remembered_cpf');
-    if (savedCpf && rememberMe) {
-      setCpf(savedCpf);
+    const savedPassword = localStorage.getItem('remembered_password');
+    if (rememberMe) {
+      if (savedCpf) setCpf(savedCpf);
+      if (savedPassword) setPassword(savedPassword);
     }
   }, []);
 
   const formatCPF = (value: string) => {
-    // Remove tudo o que não é dígito
     const digits = value.replace(/\D/g, '');
-    
-    // Limita a 11 dígitos
     const limited = digits.slice(0, 11);
-    
-    // Aplica a máscara: 000.000.000-00
     return limited
       .replace(/(\d{3})(\d)/, '$1.$2')
       .replace(/(\d{3})(\d)/, '$1.$2')
@@ -66,36 +64,14 @@ export default function Login() {
     e.preventDefault();
     setError('');
     
-    // Validação de CPF apenas se não for login Super Admin
-    if (loginTab !== 'super') {
-      const cleanInput = cpf.replace(/\D/g, ''); 
-      if (!cleanInput) {
-        setError('Por favor digite um CPF válido.');
-        return;
-      }
-    }
-
-    if (loginTab === 'super') {
-      if (password === 'dev2026') {
-        localStorage.setItem('currentUser', JSON.stringify({ 
-          name: 'Desenvolvedor Master', 
-          role: 'Desenvolvedor Geral', 
-          avatar: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=100&q=80' 
-        }));
-        await recordLog('Desenvolvedor', 'Root', 'sucesso', 'Acesso via Console Geral');
-        navigate('/superadmin');
-      } else {
-        setError('Senha mestre de servidor incorreta.');
-        await recordLog('Desconhecido', 'Intrusos', 'erro', 'Tentativa de acesso Root falhou');
-      }
+    const cleanInput = cpf.replace(/\D/g, ''); 
+    if (!cleanInput) {
+      setError('Por favor digite um CPF válido.');
       return;
     }
 
-    const cleanInput = cpf.replace(/\D/g, '').trim(); 
-
     try {
       setIsSubmitting(true);
-      // Tenta buscar tanto pelo CPF digitado quanto pelo CPF limpo (sem pontos)
       const { data: found, error: dbError } = await supabase
         .from('employees')
         .select('*')
@@ -105,11 +81,10 @@ export default function Login() {
       if (dbError) throw dbError;
 
       if (found) {
-        // Se estiver tentando cadastrar senha
-        if (isRegistering) {
+        if (loginTab === 'register') {
           if (found.password) {
             setError('Já existe uma senha cadastrada para este CPF.');
-            setIsRegistering(false);
+            setLoginTab('login');
             return;
           }
 
@@ -125,46 +100,54 @@ export default function Login() {
 
           if (updateError) throw updateError;
 
-          alert('Senha cadastrada com sucesso! Agora você pode fazer o login.');
-          setIsRegistering(false);
-          setRegisterPassword('');
+          // Login Automático após cadastro de sucesso para melhor UX
+          const updatedUser = { ...found, password: registerPassword };
+          
+          if (rememberMe) {
+            localStorage.setItem('remembered_cpf', cpf);
+            localStorage.setItem('remembered_password', registerPassword);
+            localStorage.setItem('remember_me', 'true');
+          } else {
+            localStorage.removeItem('remembered_cpf');
+            localStorage.removeItem('remembered_password');
+            localStorage.setItem('remember_me', 'false');
+          }
+          
+          localStorage.setItem('currentUser', JSON.stringify(updatedUser));
+          await recordLog(found.name, 'Entrada', 'sucesso', 'Primeiro acesso - Senha criada e login automático');
+          navigate('/dashboard');
           return;
         }
 
-        // Login Normal
+        // Login Normal (Colaborador ou Admin)
         if (!found.password) {
-          setError('Este CPF ainda não possui senha cadastrada. Clique em "Cadastrar Senha" abaixo.');
+          setError('Este CPF ainda não possui senha cadastrada. Preencha sua nova senha abaixo.');
+          setLoginTab('register');
           return;
         }
 
         if (found.password !== password) {
           setError('Senha incorreta.');
-          await recordLog(found.name, loginTab === 'admin' ? 'Gestão' : 'Colaborador', 'erro', 'Senha inválida');
+          await recordLog(found.name, 'Entrada', 'erro', 'Senha inválida');
           return;
         }
 
-        // Se chegou aqui, login OK
-        const isAdmin = ['admin', 'superadmin', 'Administrador do Sistema', 'Desenvolvedor Geral'].includes(found.role);
-
-        if (loginTab === 'admin' && !isAdmin) {
-          setError('Este usuário não possui privilégios administrativos.');
-          await recordLog(found.name, 'Gestão', 'erro', 'Tentativa de acesso admin sem privilégio');
-          return;
-        }
-
+        // Sucesso
         if (rememberMe) {
           localStorage.setItem('remembered_cpf', cpf);
+          localStorage.setItem('remembered_password', password);
           localStorage.setItem('remember_me', 'true');
         } else {
           localStorage.removeItem('remembered_cpf');
+          localStorage.removeItem('remembered_password');
           localStorage.setItem('remember_me', 'false');
         }
         localStorage.setItem('currentUser', JSON.stringify(found));
-        await recordLog(found.name, loginTab === 'admin' ? 'Gestão' : 'Colaborador', 'sucesso', loginTab === 'admin' ? 'Acesso Administrativo via CPF' : '');
+        await recordLog(found.name, 'Entrada', 'sucesso', 'Login realizado');
         navigate('/dashboard');
       } else {
          setError('CPF não encontrado no sistema.');
-         await recordLog('CPF: ' + (cpf || 'vazio'), loginTab === 'admin' ? 'Gestão' : 'Colaborador', 'erro', 'CPF inexistente na base');
+         await recordLog('CPF: ' + (cpf || 'vazio'), 'Entrada', 'erro', 'CPF inexistente na base');
       }
     } catch (e) {
       console.error('Erro de Login:', e);
@@ -187,7 +170,6 @@ export default function Login() {
       const challenge = new Uint8Array(32);
       window.crypto.getRandomValues(challenge);
 
-      // Busca credencial do dispositivo
       const assertion = await navigator.credentials.get({
         publicKey: {
           challenge,
@@ -198,7 +180,6 @@ export default function Login() {
       }) as PublicKeyCredential;
 
       if (assertion) {
-        // Busca o usuário pelo ID da credencial (bio_id)
         const { data: user, error: dbError } = await supabase
           .from('employees')
           .select('*')
@@ -225,13 +206,11 @@ export default function Login() {
     }
   };
 
-
   return (
     <div className="min-h-screen flex flex-col bg-surface overflow-hidden">
       <div className="flex flex-1">
-        {/* Branding Side - Deep Blue Glassmorphism */}
+        {/* Branding Side */}
         <div className="hidden lg:flex lg:w-7/12 relative items-center justify-center bg-primary p-8 overflow-hidden">
-          {/* Animated Background Overlay */}
           <div 
             className="absolute inset-0 opacity-40 mix-blend-overlay rotate-3 scale-110" 
             style={{ 
@@ -243,140 +222,72 @@ export default function Login() {
           <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary/95 to-[#050f2b]"></div>
           
           <div className="relative z-10 max-w-2xl">
-            <motion.div 
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-4 inline-flex items-center space-x-3 bg-white/5 backdrop-blur-2xl px-4 py-2 rounded-2xl border border-white/10 shadow-2xl"
-            >
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-4 inline-flex items-center space-x-3 bg-white/5 backdrop-blur-2xl px-4 py-2 rounded-2xl border border-white/10 shadow-2xl">
               <div className="w-2 h-2 rounded-full bg-[#E9C176] animate-pulse shadow-[0_0_10px_#E9C176]"></div>
-              <span className="text-white/80 text-[10px] font-black tracking-[0.3em] uppercase">Security Protocol v2.4</span>
+              <span className="text-white/80 text-[10px] font-black tracking-[0.3em] uppercase">Security Protocol v2.5.1</span>
             </motion.div>
 
-            <motion.h1 
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.2 }}
-              className="text-white text-7xl font-extrabold tracking-tighter mb-4 leading-[1.05] font-headline"
-            >
-              Central de Documentos <br />
-              do <span className="text-[#E9C176]">Colaborador</span>
+            <motion.h1 initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.2 }} className="text-white text-7xl font-extrabold tracking-tighter mb-4 leading-[1.05] font-headline">
+              Central de Documentos <br /> do <span className="text-[#E9C176]">Colaborador</span>
             </motion.h1>
 
-            <motion.p 
-              initial={{ opacity: 0, x: -30 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.3 }}
-              className="text-blue-100/60 text-xl font-medium max-w-lg mb-6 leading-relaxed"
-            >
-              Acesse seus recibos de pagamento, férias e informes de rendimentos com segurança e praticidade. Ambiente exclusivo para colaboradores e administradores.
+            <motion.p initial={{ opacity: 0, x: -30 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 }} className="text-blue-100/60 text-xl font-medium max-w-lg mb-6 leading-relaxed">
+              Acesse seus recibos de pagamento, férias e informes de rendimentos com segurança e praticidade.
             </motion.p>
-
-            <div className="grid grid-cols-2 gap-4">
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="bg-white/5 p-8 rounded-[2rem] border border-white/5 backdrop-blur-sm group hover:bg-white/10 transition-all duration-500"
-              >
-                <div className="w-10 h-10 rounded-2xl bg-[#E9C176]/10 flex items-center justify-center mb-6 text-[#E9C176] group-hover:scale-110 transition-transform">
-                  <Shield className="w-5 h-5 fill-current" />
-                </div>
-                <h3 className="text-white text-lg font-bold mb-3">LGPD Ready</h3>
-                <p className="text-white/40 text-sm leading-relaxed">Conformidade total com as leis de privacidade brasileiras.</p>
-              </motion.div>
-
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-                className="bg-white/5 p-8 rounded-[2rem] border border-white/5 backdrop-blur-sm group hover:bg-white/10 transition-all duration-500"
-              >
-                <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center mb-6 text-white/50 group-hover:scale-110 transition-transform">
-                   <Lock className="w-5 h-5 fill-current" />
-                </div>
-                <h3 className="text-white text-lg font-bold mb-3">E-Vault</h3>
-                <p className="text-white/40 text-sm leading-relaxed">Armazenamento de dados em nuvem de alta disponibilidade.</p>
-              </motion.div>
-            </div>
           </div>
+        </div>
 
-            <div className="mt-12">
-              <div className="flex items-center space-x-4">
-                <div className="flex -space-x-3">
-                  {[1,2,3].map(i => (
-                    <div key={i} className="w-10 h-10 rounded-full border-2 border-primary bg-slate-800 flex items-center justify-center text-[10px] text-white font-bold overflow-hidden shadow-xl">
-                      <img src={`https://i.pravatar.cc/100?u=${i}`} alt="user" />
-                    </div>
-                  ))}
-                </div>
-                <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest">+4.2k usuários ativos hoje</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Form Side - MD3 Surface Light */}
-        <div className="w-full lg:w-5/12 bg-surface-container-lowest flex items-center justify-center p-8 lg:p-24 relative overflow-y-auto">
+        {/* Form Side */}
+        <div className="w-full lg:w-5/12 bg-surface-container-lowest flex items-center justify-center p-6 sm:p-12 lg:p-24 relative overflow-y-auto">
           <div className="w-full max-w-sm">
-            {/* Logo */}
-            <div className="mb-16">
-              <div className="flex items-center gap-4 group cursor-pointer active:scale-95 transition-transform">
-                <div className="w-14 h-14 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/30 rotate-3 group-hover:rotate-0 transition-all">
-                  <div className="text-white font-black text-2xl tracking-tighter italic">H</div>
+            <div className="mb-8 sm:mb-16">
+              <div className="flex items-center gap-4 group cursor-pointer tap-press">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-primary rounded-2xl flex items-center justify-center shadow-2xl shadow-primary/30 rotate-3 group-hover:rotate-0 transition-all">
+                  <div className="text-white font-black text-xl sm:text-2xl tracking-tighter italic">H</div>
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-primary tracking-tighter leading-none font-headline">Holerium</h2>
+                  <h2 className="text-xl sm:text-2xl font-black text-primary tracking-tighter leading-none font-headline">Holerium</h2>
                   <p className="text-[10px] text-[#E9C176] font-black uppercase tracking-[0.3em] mt-1">Digital Vault</p>
                 </div>
               </div>
             </div>
 
-            <div className="mb-12">
-              <h2 className="text-4xl font-black text-on-surface mb-3 tracking-tighter font-headline">
-                {loginTab === 'colaborador' ? 'Seja bem-vindo' : loginTab === 'admin' ? 'Portal Gestor' : 'Dev Access'}
+            <div className="mb-8 sm:mb-12">
+              <h2 className="text-3xl sm:text-4xl font-black text-on-surface mb-3 tracking-tighter font-headline leading-tight">
+                {loginTab === 'login' ? 'Seja bem-vindo' : 'Primeiro Acesso'}
               </h2>
-              <p className="text-secondary font-medium text-lg italic">Insira suas credenciais corporativas.</p>
+              <p className="text-secondary font-medium text-base sm:text-lg italic">
+                {loginTab === 'login' ? 'Insira suas credenciais corporativas.' : 'Cadastre sua senha de 4 números.'}
+              </p>
             </div>
 
             {/* Segmented Control */}
-            <div className="mb-10 flex p-1.5 bg-surface-container-high rounded-[1.2rem] shadow-inner relative group/tabs">
+            <div className="mb-8 sm:mb-10 flex p-1.5 bg-surface-container-high rounded-[1.2rem] shadow-inner relative">
               <button 
-                onClick={() => { setLoginTab('colaborador'); setError(''); }}
+                onClick={() => { setLoginTab('login'); setError(''); }}
                 className={cn(
-                  "flex-[3] py-4 text-[10px] font-black rounded-xl transition-all duration-500 uppercase tracking-[0.2em]",
-                  loginTab === 'colaborador' ? "bg-white text-primary shadow-xl scale-[1.02]" : "text-secondary hover:text-primary"
+                  "flex-1 py-3.5 sm:py-4 text-[9px] sm:text-[10px] font-black rounded-xl transition-all duration-500 uppercase tracking-[0.2em] tap-press",
+                  loginTab === 'login' ? "bg-white text-primary shadow-xl scale-[1.02]" : "text-secondary hover:text-primary"
                 )}
               >
-                Colaborador
+                Entrar
               </button>
               <button 
-                onClick={() => { setLoginTab('admin'); setError(''); }}
+                onClick={() => { setLoginTab('register'); setError(''); }}
                 className={cn(
-                  "flex-[3] py-4 text-[10px] font-black rounded-xl transition-all duration-500 uppercase tracking-[0.2em]",
-                  loginTab === 'admin' ? "bg-white text-primary shadow-xl scale-[1.02]" : "text-secondary hover:text-primary"
+                  "flex-1 py-3.5 sm:py-4 text-[9px] sm:text-[10px] font-black rounded-xl transition-all duration-500 uppercase tracking-[0.2em] tap-press",
+                  loginTab === 'register' ? "bg-white text-primary shadow-xl scale-[1.02]" : "text-secondary hover:text-primary"
                 )}
               >
-                Administrador
-              </button>
-
-              {/* Opção Oculta Master (Desenvolvedor) */}
-              <button 
-                type="button"
-                onClick={() => { setLoginTab('super'); setError(''); }}
-                className={cn(
-                  "flex-1 flex items-center justify-center transition-all duration-500 rounded-xl opacity-0 group-hover/tabs:opacity-100",
-                  loginTab === 'super' ? "bg-white text-[#E9C176] shadow-xl opacity-100 scale-110" : "text-outline/40 hover:text-[#E9C176]"
-                )}
-                title="Acesso Master"
-              >
-                <Lock className={cn("w-4 h-4 transition-all", loginTab === 'super' && "fill-current")} />
+                Cadastrar Senha
               </button>
             </div>
 
             <form className="space-y-8" onSubmit={handleSubmit}>
-              {loginTab !== 'super' && (
+              <div className="space-y-6">
                 <div className="space-y-3">
                   <label className="block text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">
-                    {loginTab === 'colaborador' ? 'CPF do Colaborador' : 'CPF Credencial Master'}
+                    CPF Registrado
                   </label>
                   <div className="relative group">
                     <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
@@ -392,71 +303,66 @@ export default function Login() {
                     />
                   </div>
                 </div>
-              )}
 
-              { loginTab === 'super' ? (
-                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                  <label className="block text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">
-                    Senha de Servidor
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
-                       <Lock className="w-5 h-5" />
+                {loginTab === 'register' ? (
+                  <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3 bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100">
+                    <label className="block text-[10px] font-black text-primary uppercase tracking-[0.2em]">
+                      Criar Nova Senha (4 Números)
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-primary/40 group-focus-within:text-primary transition-colors">
+                         <Key className="w-5 h-5" />
+                      </div>
+                      <input 
+                        className="block w-full pl-16 pr-6 py-6 bg-white border border-blue-200 rounded-[1.5rem] text-primary font-black text-2xl tracking-[0.5em] placeholder:text-outline/20 focus:ring-4 focus:ring-primary/10 transition-all outline-none shadow-sm"
+                        placeholder="0000" 
+                        type={showRegisterPassword ? "text" : "password"}
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={registerPassword}
+                        onChange={(e) => setRegisterPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                        className="absolute inset-y-0 right-0 pr-6 flex items-center text-outline/40 hover:text-primary transition-colors tap-press"
+                      >
+                        {showRegisterPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
                     </div>
-                    <input 
-                      className="block w-full pl-16 pr-6 py-6 bg-white border border-surface-container-high rounded-[1.5rem] text-on-surface font-black text-lg placeholder:text-outline/30 focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all outline-none shadow-sm"
-                      placeholder="••••••••••••" 
-                      type="password"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                </motion.div>
-              ) : isRegistering ? (
-                <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="space-y-3 bg-blue-50/50 p-6 rounded-[2rem] border border-blue-100">
-                  <label className="block text-[10px] font-black text-primary uppercase tracking-[0.2em]">
-                    Criar Nova Senha (4 Números)
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-primary/40 group-focus-within:text-primary transition-colors">
-                       <Key className="w-5 h-5" />
+                  </motion.div>
+                ) : (
+                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
+                    <label className="block text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">
+                      Senha de 4 Dígitos
+                    </label>
+                    <div className="relative group">
+                      <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
+                         <Lock className="w-5 h-5" />
+                      </div>
+                      <input 
+                        className="block w-full pl-16 pr-6 py-6 bg-white border border-surface-container-high rounded-[1.5rem] text-on-surface font-black text-lg placeholder:text-outline/30 focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all outline-none shadow-sm"
+                        placeholder="••••" 
+                        type={showPassword ? "text" : "password"}
+                        inputMode="numeric"
+                        maxLength={4}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-6 flex items-center text-outline/40 hover:text-primary transition-colors tap-press"
+                      >
+                        {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                      </button>
                     </div>
-                    <input 
-                      className="block w-full pl-16 pr-6 py-6 bg-white border border-blue-200 rounded-[1.5rem] text-primary font-black text-2xl tracking-[0.5em] placeholder:text-outline/20 focus:ring-4 focus:ring-primary/10 transition-all outline-none shadow-sm"
-                      placeholder="0000" 
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={4}
-                      value={registerPassword}
-                      onChange={(e) => setRegisterPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    />
-                  </div>
-                  <p className="text-[9px] text-blue-600/60 font-bold uppercase tracking-widest text-center mt-2">Esta senha será usada para seus próximos acessos</p>
-                </motion.div>
-              ) : (
-                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-3">
-                  <label className="block text-[10px] font-black text-secondary uppercase tracking-[0.2em] ml-2">
-                    Senha de 4 Dígitos
-                  </label>
-                  <div className="relative group">
-                    <div className="absolute inset-y-0 left-0 pl-6 flex items-center pointer-events-none text-outline group-focus-within:text-primary transition-colors">
-                       <Lock className="w-5 h-5" />
-                    </div>
-                    <input 
-                      className="block w-full pl-16 pr-6 py-6 bg-white border border-surface-container-high rounded-[1.5rem] text-on-surface font-black text-lg placeholder:text-outline/30 focus:ring-4 focus:ring-primary/5 focus:border-primary/20 transition-all outline-none shadow-sm"
-                      placeholder="••••" 
-                      type="password"
-                      inputMode="numeric"
-                      maxLength={4}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                    />
-                  </div>
-                </motion.div>
-              )}
+                  </motion.div>
+                )}
+              </div>
 
               {error && (
-                <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="bg-red-50 text-red-700 p-5 rounded-3xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 border border-red-100 shadow-sm shadow-red-500/5">
+                <motion.div initial={{ opacity: 0, y: -5 }} animate={{ opacity: 1, y: 0 }} className="bg-red-50 text-red-700 p-5 rounded-3xl text-[10px] font-black uppercase tracking-widest flex items-center gap-3 border border-red-100 shadow-sm">
                   <AlertCircle className="w-4 h-4" />
                   {error}
                 </motion.div>
@@ -470,41 +376,29 @@ export default function Login() {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="w-5 h-5 rounded-lg border-outline-variant text-[#775a19] focus:ring-[#E9C176]/20 transition-all cursor-pointer"
                   />
-                  <span className="text-secondary font-semibold group-hover:text-primary transition-colors">Lembrar</span>
+                  <span className="text-secondary font-semibold group-hover:text-primary transition-colors">Lembrar Acesso</span>
                 </label>
-
-                {loginTab !== 'super' && (
-                  <button 
-                    type="button"
-                    onClick={() => {
-                      setIsRegistering(!isRegistering);
-                      setError('');
-                    }}
-                    className="text-primary font-bold text-xs hover:underline decoration-2 underline-offset-4"
-                  >
-                    {isRegistering ? 'Voltar ao Login' : 'Cadastrar Senha'}
-                  </button>
-                )}
               </div>
 
               <button 
                 disabled={isSubmitting}
-                className="w-full bg-primary text-white py-6 rounded-[1.5rem] font-black flex items-center justify-center space-x-4 group hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:scale-100"
+                className="w-full bg-primary text-white py-5 sm:py-6 rounded-[1.5rem] font-black flex items-center justify-center space-x-4 group hover:scale-[1.02] tap-press transition-all shadow-2xl shadow-primary/30 disabled:opacity-50 disabled:scale-100"
               >
                 <span className="uppercase tracking-[0.3em] text-[10px]">
-                  {isSubmitting ? 'Verificando...' : isRegistering ? 'Confirmar Cadastro' : 'Autenticação Segura'}
+                  {isSubmitting ? 'Verificando...' : loginTab === 'register' ? 'Criar Minha Senha' : 'Acessar Meu Portal'}
                 </span>
                 {!isSubmitting && <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />}
               </button>
             </form>
 
+            {/* Biometrics */}
             <div className="mt-16">
               <div className="flex items-center mb-10">
                 <div className="flex-1 h-px bg-surface-container-high"></div>
                 <span className="px-6 text-[10px] font-black text-outline/40 uppercase tracking-[0.4em]">Biometria</span>
                 <div className="flex-1 h-px bg-surface-container-high"></div>
               </div>
-              <div className="flex justify-center space-x-8">
+              <div className="flex justify-center flex-wrap gap-8">
                 <button 
                   type="button"
                   onClick={handleBiometricLogin}
@@ -517,35 +411,25 @@ export default function Login() {
                 >
                   <Fingerprint className={cn("w-8 h-8", isBioLoading ? "text-primary" : "text-outline/60")} />
                 </button>
-                <div className="w-16 h-16 rounded-[1.5rem] border-2 border-surface-container-high flex items-center justify-center opacity-20 bg-surface-container-low select-none">
-                  <ScanFace className="w-8 h-8 text-outline" />
-                </div>
-                <div className="w-16 h-16 rounded-[1.5rem] border-2 border-surface-container-high flex items-center justify-center opacity-20 bg-surface-container-low select-none">
-                  <Key className="w-8 h-8 text-outline" />
-                </div>
               </div>
             </div>
 
-            <div className="mt-20 pt-10 border-t border-surface-container-high text-center flex justify-center">
+            <ContactButton variant="inline" />
+
+            <div className="mt-20 pt-10 border-t border-surface-container-high text-center space-y-4">
               <button 
                 onClick={() => setIsAboutOpen(true)}
-                className="flex flex-col items-center gap-4 text-[9px] text-secondary/40 uppercase tracking-[0.4em] font-black hover:text-primary transition-all group"
+                className="text-[9px] text-secondary/40 uppercase tracking-[0.4em] font-black hover:text-primary transition-all group block mx-auto"
               >
-                <span>Sincronizado na Nuvem • Holerium v2.5.0</span>
-                <div className="w-6 h-1 bg-surface-container-high rounded-full group-hover:w-12 group-hover:bg-primary transition-all"></div>
+                <span>Nuvem Ativa • Holerium v2.5.1</span>
               </button>
+              <p className="text-[9px] text-secondary/30 uppercase tracking-[0.1em] font-medium">
+                © Holerium Todos os direitos reservados.
+              </p>
             </div>
           </div>
         </div>
       </div>
-
-      {/* Developer Trigger Area */}
-      <div 
-        className="fixed top-0 right-0 w-20 h-20 z-50 cursor-default"
-        onClick={() => { setLoginTab('super'); setError(''); }}
-      ></div>
-
-      <ContactButton />
       <AboutModal isOpen={isAboutOpen} onClose={() => setIsAboutOpen(false)} />
     </div>
   );

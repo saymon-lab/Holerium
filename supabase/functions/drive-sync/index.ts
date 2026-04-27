@@ -15,6 +15,19 @@ serve(async (req) => {
   let totalSynced = 0;
   let errorCount = 0;
 
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+  const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+  const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+  const addLog = async (type: 'info' | 'error' | 'success', msg: string) => {
+    console.log(`[${type.toUpperCase()}] ${msg}`);
+    try {
+      await supabase.from('sync_logs').insert({ type, message: msg });
+    } catch (e) {
+      console.error("Erro ao salvar log no banco:", e.message);
+    }
+  };
+
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
@@ -37,13 +50,15 @@ serve(async (req) => {
     const { data: employees } = await supabase.from('employees').select('name, cpf');
     
     const monthFolders: any[] = [];
-    console.log("[BOT] Mapeando pastas do Drive...");
+    await addLog('info', "Mapeando pastas do Drive...");
     const rootChildren = await listFolders(rootFolderId, token);
 
     for (const folder of rootChildren) {
       const isYear = folder.name.match(/^20\d{2}$/);
       const isFullMonth = folder.name.match(/(\d{2})[-/](\d{4})/);
       const isDIRF = folder.name.match(/(DIRF|RENDIMENTOS)-(\d{4})/i);
+      
+      const monthNames = ["JANEIRO", "FEVEREIRO", "MARCO", "ABRIL", "MAIO", "JUNHO", "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"];
       
       if (isDIRF) {
         // Para DIRF, tenta pegar o ano do nome da pasta ou do arquivo depois
@@ -54,9 +69,19 @@ serve(async (req) => {
         const year = isYear[0];
         const subFolders = await listFolders(folder.id, token);
         for (const sub of subFolders) {
+          const subUpper = sub.name.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
           const mMatch = sub.name.match(/^(\d{2})$/) || sub.name.match(/^(\d{2})[-/]/);
+          
+          let month = '';
           if (mMatch) {
-            monthFolders.push({ id: sub.id, name: sub.name, month: mMatch[1], year: year });
+            month = mMatch[1];
+          } else {
+            const mIdx = monthNames.findIndex(m => subUpper.includes(m));
+            if (mIdx !== -1) month = (mIdx + 1).toString().padStart(2, '0');
+          }
+
+          if (month) {
+            monthFolders.push({ id: sub.id, name: sub.name, month, year });
           }
         }
       }
@@ -65,7 +90,7 @@ serve(async (req) => {
     // Ordenar para processar 2026 primeiro
     monthFolders.sort((a, b) => b.year.localeCompare(a.year) || b.month.localeCompare(a.month));
 
-    console.log(`[BOT] Pastas Candidatas: ${monthFolders.length} (Priorizando mais recentes)`);
+    await addLog('info', `Pastas Candidatas: ${monthFolders.length} (Priorizando recentes)`);
     const startTime = Date.now();
 
     for (const folder of monthFolders) {
@@ -86,7 +111,7 @@ serve(async (req) => {
       }
 
       const files = await listFiles(folder.id, token);
-      console.log(`[BOT] Pasta ${year}/${month}: ${files.length} arquivos.`);
+      await addLog('info', `Lendo pasta ${year}/${month} (${files.length} arquivos)`);
 
       for (const file of files) {
         // Proteção contra Timeout: Se faltar menos de 10s para os 2 minutos, para.
@@ -111,6 +136,19 @@ serve(async (req) => {
         const cloudPath = `${formattedCpf}/${fileYear}/${month}/${normalizedName}`;
 
         try {
+          // [OTIMIZAÇÃO] Verifica se o registro já existe no banco (Tolerante a formatos de CPF)
+          const { data: exists } = await supabase
+            .from('documents')
+            .select('id')
+            .in('owner_cpf', [cleanCpf, formattedCpf])
+            .match({ file_path: cloudPath })
+            .maybeSingle();
+
+          if (exists) {
+            console.log(`[PULANDO] ${normalizedName} já sincronizado.`);
+            continue; 
+          }
+
           console.log(`[PROCESSANDO] ${year}/${month} - ${file.name}`);
           
           // 1. Download do Google Drive
@@ -119,27 +157,32 @@ serve(async (req) => {
           // 2. Upload para Supabase Storage
           await supabase.storage.from('receipts').upload(cloudPath, blob, { upsert: true });
 
-          // 3. LIMPEZA AGRESSIVA: Remove qualquer registro anterior com o MESMO NOME de arquivo para este usuário
-          // Isso corrige casos onde o arquivo foi detectado com ano/mês errado anteriormente.
-          await supabase.from('documents').delete().match({ owner_cpf: cleanCpf, filename: normalizedName });
-          
-          if (cleanCpf !== formattedCpf) {
-            await supabase.from('documents').delete().match({ owner_cpf: formattedCpf, filename: normalizedName });
-          }
+          // 3. UPSERT ATÔMICO: Cria ou Atualiza o registro sem deletar o anterior primeiro.
+          // Isso evita que o documento "suma" do portal se houver timeout entre o delete e o insert.
+          const docData = { 
+            owner_cpf: cleanCpf, 
+            year: fileYear, 
+            month, 
+            category, 
+            filename: normalizedName, 
+            file_path: cloudPath 
+          };
 
-          // 4. INSERÇÃO DO NOVO REGISTRO
-          const docData = { owner_cpf: cleanCpf, year: fileYear, month, category, filename: normalizedName, file_path: cloudPath };
-          const { error: insErr } = await supabase.from('documents').insert(docData);
+          // Tenta upsert (baseado no file_path que é único)
+          const { error: upsError } = await supabase
+            .from('documents')
+            .upsert(docData, { onConflict: 'file_path' });
           
-          if (insErr) {
-            console.warn(`    [!] Erro FK, tentando CPF formatado...`);
+          if (upsError) {
+            console.warn(`    [!] Erro Upsert com CPF limpo, tentando formatado...`);
             docData.owner_cpf = formattedCpf;
-            await supabase.from('documents').insert(docData);
+            await supabase.from('documents').upsert(docData, { onConflict: 'file_path' });
           }
           
           totalSynced++;
+          await addLog('success', `Sincronizado: ${file.name} (${month}/${fileYear})`);
         } catch (e: any) {
-          console.error(`  [!] Erro crítico em ${file.name}:`, e.message);
+          await addLog('error', `Erro em ${file.name}: ${e.message}`);
           errorCount++;
         }
       }
