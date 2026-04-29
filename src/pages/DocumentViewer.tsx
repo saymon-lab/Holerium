@@ -401,8 +401,14 @@ export default function DocumentViewer() {
               </button>
             )}
           </div>
-          <div className="flex-1 rounded-3xl overflow-hidden bg-white shadow-inner border border-slate-100 relative min-h-[500px]">
-             <iframe src={pdfUrl || ''} className="absolute inset-0 w-full h-full border-none" title="PDF Viewer" />
+          <div className="flex-1 rounded-3xl overflow-hidden bg-white shadow-inner border border-slate-100 relative min-h-[500px] flex flex-col">
+             {pdfUrl ? (
+               <iframe 
+                 src={typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? `https://docs.google.com/gview?url=${encodeURIComponent(pdfUrl)}&embedded=true` : pdfUrl} 
+                 className="absolute inset-0 w-full h-full border-none" 
+                 title="PDF Viewer" 
+               />
+             ) : null}
           </div>
         </div>
       )}
